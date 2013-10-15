@@ -2,7 +2,7 @@
 
 This is an implementation of the `pgsql` PHP extension for the [HipHop PHP VM][fb-hphp].
 
-**Note: As of writing, this extension is blocked on facebook/hiphop-php#1174**
+**Note: As of writing, this extension is blocked on [this issue](https://github.com/facebook/hiphop-php#1174)**
 
 ### Prerequisites
 
