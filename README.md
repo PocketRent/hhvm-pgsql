@@ -72,5 +72,5 @@ Otherwise, all functionality is (or should be) the same as the Zend implementati
 
 As always, bugs should be reported to the issue tracker and patches are very welcome.
 
-[fb-hphp]: https://github.com/facebook/hiphop-php "HipHop PHP"
-[fb-wiki]: https://github.com/facebook/hiphop-php/wiki "HipHop Wiki"
+[fb-hphp]: https://github.com/facebook/hhvm "HipHop PHP"
+[fb-wiki]: https://github.com/facebook/hhvm/wiki "HipHop Wiki"
