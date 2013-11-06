@@ -392,7 +392,8 @@ public:
 static Variant HHVM_FUNCTION(pg_connect, const String& connection_string, int connect_type /* = 0 */) {
     PGSQL * pgsql = NULL;
 
-    pgsql = new PGSQL(connection_string, false);
+	MemoryManager* mm = MemoryManager::TlsWrapper::getNoCheck();
+    pgsql = new (mm->smartMallocSize(sizeof(PGSQL))) PGSQL(connection_string, false);
 
     if (pgsql->get() == NULL) {
         delete pgsql;
@@ -404,7 +405,7 @@ static Variant HHVM_FUNCTION(pg_connect, const String& connection_string, int co
 static Variant HHVM_FUNCTION(pg_async_connect, const String& connection_string, int connect_type /* = 0 */) {
     PGSQL * pgsql = NULL;
 
-    pgsql = new PGSQL(connection_string, true);
+    pgsql = NEWOBJ(PGSQL)(connection_string, true);
 
     if (pgsql->get() == NULL) {
         delete pgsql;
@@ -814,7 +815,7 @@ static Variant HHVM_FUNCTION(pg_query, CResRef connection, const String& query) 
 
     }
 
-    PGSQLResult *pgresult = new PGSQLResult(conn, res);
+    PGSQLResult *pgresult = NEWOBJ(PGSQLResult)(conn, res);
 
     return Resource(pgresult);
 }
@@ -851,7 +852,7 @@ static Variant HHVM_FUNCTION(pg_query_params, CResRef connection, const String& 
 
     }
 
-    PGSQLResult *pgresult = new PGSQLResult(conn, res);
+    PGSQLResult *pgresult = NEWOBJ(PGSQLResult)(conn, res);
 
     return Resource(pgresult);
 }
@@ -885,7 +886,7 @@ static Variant HHVM_FUNCTION(pg_prepare, CResRef connection, const String& stmtn
 
     }
 
-    PGSQLResult *pgres = new PGSQLResult(conn, res);
+    PGSQLResult *pgres = NEWOBJ(PGSQLResult)(conn, res);
 
     return Resource(pgres);
 }
@@ -901,7 +902,7 @@ static Variant HHVM_FUNCTION(pg_execute, CResRef connection, const String& stmtn
     PGresult *res = PQexecPrepared(conn->get(), stmtname.data(), params.size(),
             str_array.data(), NULL, NULL, 0);
 
-    PGSQLResult *pgres = new PGSQLResult(conn, res);
+    PGSQLResult *pgres = NEWOBJ(PGSQLResult)(conn, res);
 
     return Resource(pgres);
 }
@@ -957,7 +958,7 @@ static Variant HHVM_FUNCTION(pg_get_result, CResRef connection) {
         return false;
     }
 
-    PGSQLResult *pgresult = new PGSQLResult(conn, res);
+    PGSQLResult *pgresult = NEWOBJ(PGSQLResult)(conn, res);
 
     return Resource(pgresult);
 }

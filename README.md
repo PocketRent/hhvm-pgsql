@@ -2,6 +2,8 @@
 
 This is an implementation of the `pgsql` PHP extension for the [HipHop PHP VM][fb-hphp].
 
+**Note: As of writing, this extension is blocked on [this issue](https://github.com/facebook/hiphop-php#1174)**
+
 ### Prerequisites
 
 This extension only requires the `libpq` library distributed with Postgres and HipHop VM itself.
