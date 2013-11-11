@@ -1270,6 +1270,42 @@ static Variant HHVM_FUNCTION(pg_field_type_oid, CResRef result, int64_t field_nu
     return (int64_t)id;
 }
 
+static Variant HHVM_FUNCTION(pg_field_type, CResRef result, int64_t field_number) {
+    PGSQLResult *res = PGSQLResult::Get(result);
+
+    if (res == NULL) {
+        return false;
+    }
+
+    if (field_number < 0 || field_number > res->getNumFields()) {
+        raise_warning("pg_field_type(): Column offset `%d` out of range", (int)field_number);
+        return false;
+    }
+
+    Oid id = PQftype(res->get(), field_number);
+    if (id == InvalidOid) return false;
+
+    std::ostringstream query;
+        query << "SELECT typname FROM pg_type WHERE oid=" << id;
+
+    PGresult *name_res = PQexec(res->getConn()->get(), query.str().c_str());
+    if (name_res && PQresultStatus(name_res) == PGRES_TUPLES_OK) {
+        if (name_res) PQclear(name_res);
+        return false;
+    }
+
+    char * name = PQgetvalue(name_res, 0, 0);
+    if (name == NULL) {
+        PQclear(name_res);
+        return false;
+    }
+
+    String ret(name, CopyString);
+    PQclear(name_res);
+
+    return ret;
+}
+
 static int64_t HHVM_FUNCTION(pg_num_fields, CResRef result) {
     PGSQLResult *res = PGSQLResult::Get(result);
     if (res == NULL) {
@@ -1388,6 +1424,7 @@ public:
         HHVM_FE(pg_field_size);
         HHVM_FE(pg_field_table);
         HHVM_FE(pg_field_type_oid);
+        HHVM_FE(pg_field_type);
         HHVM_FE(pg_free_result);
         HHVM_FE(pg_get_pid);
         HHVM_FE(pg_get_result);
