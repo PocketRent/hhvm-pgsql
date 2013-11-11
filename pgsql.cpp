@@ -1235,8 +1235,11 @@ static Variant HHVM_FUNCTION(pg_field_table, CResRef result, int64_t field_numbe
         query << "SELECT relname FROM pg_class WHERE oid=" << id;
 
         PGresult *name_res = PQexec(res->getConn()->get(), query.str().c_str());
-        if (name_res && PQresultStatus(name_res) == PGRES_TUPLES_OK) {
-            if (name_res) PQclear(name_res);
+        if (!name_res)
+            return false;
+
+        if (PQresultStatus(name_res) != PGRES_TUPLES_OK) {
+            PQclear(name_res);
             return false;
         }
 
@@ -1270,6 +1273,7 @@ static Variant HHVM_FUNCTION(pg_field_type_oid, CResRef result, int64_t field_nu
     return (int64_t)id;
 }
 
+// TODO: Cache the results of this function somewhere
 static Variant HHVM_FUNCTION(pg_field_type, CResRef result, int64_t field_number) {
     PGSQLResult *res = PGSQLResult::Get(result);
 
@@ -1285,12 +1289,16 @@ static Variant HHVM_FUNCTION(pg_field_type, CResRef result, int64_t field_number
     Oid id = PQftype(res->get(), field_number);
     if (id == InvalidOid) return false;
 
+    // This should really get all of the rows in pg_type and build a map
     std::ostringstream query;
         query << "SELECT typname FROM pg_type WHERE oid=" << id;
 
     PGresult *name_res = PQexec(res->getConn()->get(), query.str().c_str());
-    if (name_res && PQresultStatus(name_res) == PGRES_TUPLES_OK) {
-        if (name_res) PQclear(name_res);
+    if (!name_res)
+        return false;
+
+    if (PQresultStatus(name_res) != PGRES_TUPLES_OK) {
+        PQclear(name_res);
         return false;
     }
 
