@@ -31,7 +31,6 @@ public:
 
 	~Result() {
 		if (m_res) {
-			std::cerr << "Clearing Result from destructor\n";
 			PQclear(m_res);
 			m_res = NULL;
 		}
@@ -39,7 +38,6 @@ public:
 
 	void clear() {
 		if (m_res) {
-			std::cerr << "Clearing Result from clear method\n";
 			PQclear(m_res);
 			m_res = NULL;
 		}
