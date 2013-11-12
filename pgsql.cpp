@@ -1,7 +1,8 @@
+#include "pq.h"
+
 #include "hphp/runtime/base/base-includes.h"
 #include "hphp/runtime/base/zend-string.h"
 
-#include <libpq-fe.h>
 #include "hphp/runtime/base/runtime-option.h"
 #include "hphp/runtime/server/server-stats.h"
 #include "hphp/runtime/ext/ext_string.h"
@@ -9,13 +10,24 @@
 #define PGSQL_ASSOC 1
 #define PGSQL_NUM 2
 #define PGSQL_BOTH (PGSQL_ASSOC | PGSQL_NUM)
-#define k_PGSQL_BOTH PGSQL_BOTH
 #define PGSQL_STATUS_LONG 1
 #define PGSQL_STATUS_STRING 2
 
 namespace HPHP {
 
 namespace { // Anonymous namespace
+
+struct ScopeNonBlocking {
+    ScopeNonBlocking(PQ::Connection& conn, bool mode) :
+        m_conn(conn), m_mode(mode) {}
+
+    ~ScopeNonBlocking() {
+        m_conn.setNonBlocking(m_mode);
+    }
+
+    PQ::Connection& m_conn;
+    bool m_mode;
+};
 
 class PGSQL : public SweepableResourceData {
     DECLARE_RESOURCE_ALLOCATION(PGSQL);
@@ -28,26 +40,24 @@ public:
     static bool LogNotice;
 
     static PGSQL *Get(CVarRef conn_id);
-    static PGconn *GetConn(CVarRef conn_id, PGSQL **rconn = NULL);
-
 
 public:
-    PGSQL(String conninfo, bool async);
+    PGSQL(String conninfo);
     ~PGSQL();
-
-    void close();
 
     static StaticString s_class_name;
     virtual const String& o_getClassNameHook() const { return s_class_name; }
-    virtual bool isResource() const { return m_conn != NULL; }
+    virtual bool isResource() const { return (bool)m_conn; }
 
-    PGconn * get() { return m_conn; }
+    PQ::Connection &get() { return m_conn; }
 
-    bool isNonBlocking() { return PQisnonblocking(m_conn) == 1; }
-    int  setNonBlocking(bool val=true) { return PQsetnonblocking(m_conn, (int)val); }
+    ScopeNonBlocking asNonBlocking() {
+        auto mode = m_conn.isNonBlocking();
+        return ScopeNonBlocking(m_conn, mode);
+    }
 
 private:
-    PGconn *m_conn;
+    PQ::Connection m_conn;
 
 public:
     std::string m_conn_string;
@@ -66,37 +76,36 @@ class PGSQLResult : public SweepableResourceData {
     DECLARE_RESOURCE_ALLOCATION(PGSQLResult);
 public:
     static PGSQLResult *Get(CVarRef result);
-    static PGresult *GetResult(CVarRef result, PGSQLResult **rres = NULL);
 public:
-    PGSQLResult(PGSQL* conn, PGresult *res);
+    PGSQLResult(PGSQL* conn, PQ::Result res);
     ~PGSQLResult();
 
     static StaticString s_class_name;
     virtual const String& o_getClassNameHook() const { return s_class_name; }
-    virtual bool isResource() const { return m_res != NULL; }
+    virtual bool isResource() const { return (bool)m_res; }
 
     void close();
 
-    PGresult *get() { return m_res; }
+    PQ::Result& get() { return m_res; }
 
     int getFieldNumber(CVarRef field);
     int getNumFields();
     int getNumRows();
 
     bool convertFieldRow(CVarRef row, CVarRef field,
-        int *out_row, int *out_field, const char *fn_name = NULL);
+        int *out_row, int *out_field, const char *fn_name = nullptr);
 
-    Variant fieldIsNull(CVarRef row, CVarRef field, const char *fn_name = NULL);
+    Variant fieldIsNull(CVarRef row, CVarRef field, const char *fn_name = nullptr);
 
-    Variant getFieldVal(CVarRef row, CVarRef field, const char *fn_name = NULL);
-    String getFieldVal(int row, int field, const char *fn_name = NULL);
+    Variant getFieldVal(CVarRef row, CVarRef field, const char *fn_name = nullptr);
+    String getFieldVal(int row, int field, const char *fn_name = nullptr);
 
     PGSQL * getConn() { return m_conn; }
 
 public:
     int m_current_row;
 private:
-    PGresult *m_res;
+    PQ::Result m_res;
     int m_num_fields;
     int m_num_rows;
     PGSQL * m_conn;
@@ -110,7 +119,7 @@ StaticString PGSQLResult::s_class_name("pgsql result");
 
 PGSQL *PGSQL::Get(CVarRef conn_id) {
     if (conn_id.isNull()) {
-        return NULL;
+        return nullptr;
     }
 
     PGSQL *pgsql = conn_id.toResource().getTyped<PGSQL>
@@ -119,26 +128,8 @@ PGSQL *PGSQL::Get(CVarRef conn_id) {
     return pgsql;
 }
 
-PGconn *PGSQL::GetConn(CVarRef conn_id, PGSQL **rconn /* = NULL */) {
-    PGSQL *pgsql = Get(conn_id);
-    PGconn *ret = NULL;
-    if (pgsql) {
-        ret = pgsql->get();
-    }
-    if (ret == NULL) {
-        raise_warning("supplied argument is not a valid Postgres connection resource");
-    }
-    if (rconn) {
-        *rconn = pgsql;
-    }
-
-    return ret;
-}
-
-static void notice_processor(void *arg, const char *message) {
-    if (arg != NULL) {
-        auto pgsql = static_cast<PGSQL *>(arg);
-
+static void notice_processor(PGSQL *pgsql, const char *message) {
+    if (pgsql != nullptr) {
         pgsql->m_last_notice = message;
 
         if (PGSQL::LogNotice) {
@@ -147,61 +138,37 @@ static void notice_processor(void *arg, const char *message) {
     }
 }
 
-PGSQL::PGSQL(String conninfo, bool async)
-    : m_conn_string(conninfo.data()), m_last_notice("") {
+PGSQL::PGSQL(String conninfo)
+    : m_conn(conninfo.data()), m_conn_string(conninfo.data()), m_last_notice("") {
 
     if (RuntimeOption::EnableStats && RuntimeOption::EnableSQLStats) {
         ServerStats::Log("sql.conn", 1);
     }
 
-    if (async) {
-        m_conn = PQconnectStart(conninfo.data());
+    ConnStatusType st = m_conn.status();
+    if (m_conn && st == CONNECTION_OK) {
+        // Load up the fixed information
+        m_db = m_conn.db();
+        m_user = m_conn.user();
+        m_pass = m_conn.pass();
+        m_host = m_conn.host();
+        m_port = m_conn.port();
+        m_options = m_conn.options();
+    }
+
+    if (!PGSQL::IgnoreNotice) {
+        m_conn.setNoticeProcessor(notice_processor, this);
     } else {
-        m_conn = PQconnectdb(conninfo.data());
-
-        ConnStatusType st = PQstatus(m_conn);
-        if (m_conn && st == CONNECTION_OK) {
-            // Load up the fixed information
-            m_db = PQdb(m_conn);
-            m_user = PQuser(m_conn);
-            m_pass = PQpass(m_conn);
-            m_host = PQhost(m_conn);
-            m_port = PQport(m_conn);
-            m_options = PQoptions(m_conn);
-        } else if (m_conn) {
-            raise_warning("pg_connect(): Connection failed: %s", PQerrorMessage(m_conn));
-            PQfinish(m_conn);
-            m_conn = NULL;
-        }
-    }
-
-    if (m_conn) {
-        if (!PGSQL::IgnoreNotice) {
-            PQsetNoticeProcessor(m_conn, notice_processor, static_cast<void *>(this));
-        } else {
-            PQsetNoticeProcessor(m_conn, notice_processor, NULL);
-        }
+        m_conn.setNoticeProcessor<PGSQL>(notice_processor, nullptr);
     }
 }
 
-void PGSQL::close() {
-    if (m_conn != NULL) {
-        PQfinish(m_conn);
-        m_conn = NULL;
-    }
-}
-
-PGSQL::~PGSQL() {
-    close();
-}
-
-void PGSQL::sweep() {
-	close();
-}
+PGSQL::~PGSQL() { m_conn.finish(); }
+void PGSQL::sweep() { m_conn.finish(); }
 
 PGSQLResult *PGSQLResult::Get(CVarRef result) {
     if (result.isNull()) {
-        return NULL;
+        return nullptr;
     }
 
     auto *res = result.toResource().getTyped<PGSQLResult>
@@ -210,33 +177,14 @@ PGSQLResult *PGSQLResult::Get(CVarRef result) {
     return res;
 }
 
-PGresult *PGSQLResult::GetResult(CVarRef result, PGSQLResult **rres) {
-    auto *res = Get(result);
-    PGresult *ret = NULL;
-    if (res) {
-        ret = res->get();
-    }
-    if (ret == NULL) {
-        raise_warning("supplied argument is not a valid Postgres result resource");
-    }
-    if (rres) {
-        *rres = res;
-    }
-
-    return ret;
-}
-
-PGSQLResult::PGSQLResult(PGSQL * conn, PGresult * res)
-    : m_current_row(0), m_res(res),
+PGSQLResult::PGSQLResult(PGSQL * conn, PQ::Result res)
+    : m_current_row(0), m_res(std::move(res)),
       m_num_fields(-1), m_num_rows(-1), m_conn(conn) {
     m_conn->incRefCount();
 }
 
 void PGSQLResult::close() {
-    if (m_res) {
-        PQclear(m_res);
-        m_res = NULL;
-    }
+    m_res.clear();
 }
 
 PGSQLResult::~PGSQLResult() {
@@ -253,7 +201,7 @@ int PGSQLResult::getFieldNumber(CVarRef field) {
     if (field.isNumeric(true)) {
         n = field.toInt32();
     } else if (field.isString()){
-        n = PQfnumber(m_res, field.asCStrRef().data());
+        n = m_res.fieldNumber(field.asCStrRef().data());
     } else {
         n = -1;
     }
@@ -263,14 +211,14 @@ int PGSQLResult::getFieldNumber(CVarRef field) {
 
 int PGSQLResult::getNumFields() {
     if (m_num_fields == -1) {
-        m_num_fields = PQnfields(m_res);
+        m_num_fields = m_res.numFields();
     }
     return m_num_fields;
 }
 
 int PGSQLResult::getNumRows() {
     if (m_num_rows == -1) {
-        m_num_rows = PQntuples(m_res);
+        m_num_rows = m_res.numTuples();
     }
     return m_num_rows;
 }
@@ -283,7 +231,7 @@ bool PGSQLResult::convertFieldRow(CVarRef row, CVarRef field,
 
     assert(out_row && out_field && "Output parameters cannot be null");
 
-    if (fn_name == NULL) {
+    if (fn_name == nullptr) {
         fn_name = "__internal_pgsql_func";
     }
 
@@ -321,7 +269,7 @@ bool PGSQLResult::convertFieldRow(CVarRef row, CVarRef field,
 Variant PGSQLResult::fieldIsNull(CVarRef row, CVarRef field, const char *fn_name) {
     int r, f;
     if (convertFieldRow(row, field, &r, &f, fn_name)) {
-        return PQgetisnull(m_res, r, f);
+        return m_res.fieldIsNull(r, f);
     }
 
     return false;
@@ -337,11 +285,11 @@ Variant PGSQLResult::getFieldVal(CVarRef row, CVarRef field, const char *fn_name
 }
 
 String PGSQLResult::getFieldVal(int row, int field, const char *fn_name) {
-    if (PQgetisnull(m_res, row, field) == 1) {
+    if (m_res.fieldIsNull(row, field)) {
         return null_string;
     } else {
-        char * value = PQgetvalue(m_res, row, field);
-        int length = PQgetlength(m_res, row, field);
+        char * value = m_res.getValue(row, field);
+        int length = m_res.getLength(row, field);
 
         return String(value, length, CopyString);
     }
@@ -363,7 +311,7 @@ public:
         m_strings.reserve(size);
 
         for(int i = 0; i < size; i++) {
-            Variant param = arr[i];
+            const Variant &param = arr[i];
             if (param.isNull()) {
                 m_strings.push_back(null_string);
             } else {
@@ -374,7 +322,7 @@ public:
         m_c_strs.reserve(size);
         for (int i = 0; i < size; i++) {
             if (m_strings[i].isNull()) {
-                m_c_strs.push_back(NULL);
+                m_c_strs.push_back(nullptr);
             } else {
                 m_c_strs.push_back(m_strings[i].data());
             }
@@ -390,50 +338,40 @@ public:
 //////////////////// Connection functions /////////////////////////
 
 static Variant HHVM_FUNCTION(pg_connect, const String& connection_string, int connect_type /* = 0 */) {
-    PGSQL * pgsql = NULL;
+    PGSQL * pgsql = nullptr;
 
-	MemoryManager* mm = MemoryManager::TlsWrapper::getNoCheck();
-    pgsql = new (mm->smartMallocSize(sizeof(PGSQL))) PGSQL(connection_string, false);
+    pgsql = NEWOBJ(PGSQL)(connection_string);
 
-    if (pgsql->get() == NULL) {
+    if (!pgsql->get()) {
         delete pgsql;
         return false;
     }
-    return Resource(pgsql);
-}
-
-static Variant HHVM_FUNCTION(pg_async_connect, const String& connection_string, int connect_type /* = 0 */) {
-    PGSQL * pgsql = NULL;
-
-    pgsql = NEWOBJ(PGSQL)(connection_string, true);
-
-    if (pgsql->get() == NULL) {
-        delete pgsql;
-        return false;
-    }
-
     return Resource(pgsql);
 }
 
 static bool HHVM_FUNCTION(pg_close, CResRef connection) {
     PGSQL * pgsql = PGSQL::Get(connection);
-    pgsql->close();
-    return true;
+    if (pgsql) {
+        pgsql->get().finish();
+        return true;
+    } else {
+        return false;
+    }
 }
 
 static bool HHVM_FUNCTION(pg_ping, CResRef connection) {
     PGSQL * pgsql = PGSQL::Get(connection);
 
-    if (pgsql->get() == NULL) {
+    if (!pgsql->get()) {
         return false;
     }
 
     PGPing response = PQping(pgsql->m_conn_string.data());
 
     if (response == PQPING_OK) {
-        if (PQstatus(pgsql->get()) == CONNECTION_BAD) {
-            PQreset(pgsql->get());
-            return PQstatus(pgsql->get()) != CONNECTION_BAD;
+        if (pgsql->get().status() == CONNECTION_BAD) {
+            pgsql->get().reset();
+            return pgsql->get().status() != CONNECTION_BAD;
         } else {
             return true;
         }
@@ -445,55 +383,40 @@ static bool HHVM_FUNCTION(pg_ping, CResRef connection) {
 static bool HHVM_FUNCTION(pg_connection_reset, CResRef connection) {
     PGSQL * pgsql = PGSQL::Get(connection);
 
-    if (pgsql->get() == NULL) {
+    if (!pgsql->get()) {
         return false;
     }
 
-    PQreset(pgsql->get());
+    pgsql->get().reset();
 
-    return PQstatus(pgsql->get()) != CONNECTION_BAD;
+    return pgsql->get().status() != CONNECTION_BAD;
 }
 
 ///////////// Interrogation Functions ////////////////////
 
 static int64_t HHVM_FUNCTION(pg_connection_status, CResRef connection) {
-    PGconn *conn = PGSQL::GetConn(connection);
-    if (!conn) return CONNECTION_BAD;
-    return (int64_t)PQstatus(conn);
+    PGSQL * pgsql = PGSQL::Get(connection);
+    if (pgsql == nullptr) return CONNECTION_BAD;
+    return (int64_t)pgsql->get().status();
 }
 
 static bool HHVM_FUNCTION(pg_connection_busy, CResRef connection) {
     PGSQL * pgsql = PGSQL::Get(connection);
-    if (pgsql == NULL) {
+    if (pgsql == nullptr) {
         return false;
     }
 
-    bool mode = pgsql->isNonBlocking();
-    pgsql->setNonBlocking();
+    auto blocking = pgsql->asNonBlocking();
 
-    PQconsumeInput(pgsql->get());
-
-    bool ret = (bool)PQisBusy(pgsql->get());
-
-    pgsql->setNonBlocking(mode);
-
-    return ret;
+    pgsql->get().consumeInput();
+    return pgsql->get().isBusy();
 }
 
 static Variant HHVM_FUNCTION(pg_dbname, CResRef connection) {
     PGSQL * pgsql = PGSQL::Get(connection);
 
-    if (pgsql == NULL) {
+    if (pgsql == nullptr) {
         return false;
-    }
-
-    if (pgsql->m_db.empty()) {
-        const char * db = PQdb(pgsql->get());
-        if (db == NULL) {
-            return false;
-        } else {
-            pgsql->m_db = db;
-        }
     }
 
     return pgsql->m_db;
@@ -502,17 +425,8 @@ static Variant HHVM_FUNCTION(pg_dbname, CResRef connection) {
 static Variant HHVM_FUNCTION(pg_host, CResRef connection) {
     PGSQL * pgsql = PGSQL::Get(connection);
 
-    if (pgsql == NULL) {
+    if (pgsql == nullptr) {
         return false;
-    }
-
-    if (pgsql->m_host.empty()) {
-        const char * host = PQhost(pgsql->get());
-        if (host == NULL) {
-            return false;
-        } else {
-            pgsql->m_host = host;
-        }
     }
 
     return pgsql->m_host;
@@ -521,17 +435,8 @@ static Variant HHVM_FUNCTION(pg_host, CResRef connection) {
 static Variant HHVM_FUNCTION(pg_port, CResRef connection) {
     PGSQL * pgsql = PGSQL::Get(connection);
 
-    if (pgsql == NULL) {
+    if (pgsql == nullptr) {
         return false;
-    }
-
-    if (pgsql->m_port.empty()) {
-        const char * port = PQport(pgsql->get());
-        if (port == NULL) {
-            return false;
-        } else {
-            pgsql->m_port = port;
-        }
     }
 
     String ret = pgsql->m_port;
@@ -545,17 +450,8 @@ static Variant HHVM_FUNCTION(pg_port, CResRef connection) {
 static Variant HHVM_FUNCTION(pg_options, CResRef connection) {
     PGSQL * pgsql = PGSQL::Get(connection);
 
-    if (pgsql == NULL) {
+    if (pgsql == nullptr) {
         return false;
-    }
-
-    if (pgsql->m_options.empty()) {
-        const char * options = PQoptions(pgsql->get());
-        if (options == NULL) {
-            return false;
-        } else {
-            pgsql->m_options = options;
-        }
     }
 
     return pgsql->m_options;
@@ -564,11 +460,11 @@ static Variant HHVM_FUNCTION(pg_options, CResRef connection) {
 static Variant HHVM_FUNCTION(pg_parameter_status, CResRef connection, const String& param_name) {
     PGSQL * pgsql = PGSQL::Get(connection);
 
-    if (pgsql == NULL) {
+    if (pgsql == nullptr) {
         return false;
     }
 
-    String ret(PQparameterStatus(pgsql->get(), param_name.data()), CopyString);
+    String ret(pgsql->get().parameterStatus(param_name.data()), CopyString);
 
     return ret;
 }
@@ -576,13 +472,11 @@ static Variant HHVM_FUNCTION(pg_parameter_status, CResRef connection, const Stri
 static Variant HHVM_FUNCTION(pg_client_encoding, CResRef connection) {
     PGSQL * pgsql = PGSQL::Get(connection);
 
-    if (pgsql == NULL) {
+    if (pgsql == nullptr) {
         return false;
     }
 
-    int enc = PQclientEncoding(pgsql->get());
-
-    String ret(pg_encoding_to_char(enc), CopyString);
+    String ret(pgsql->get().clientEncoding(), CopyString);
 
     return ret;
 }
@@ -590,27 +484,27 @@ static Variant HHVM_FUNCTION(pg_client_encoding, CResRef connection) {
 static int64_t HHVM_FUNCTION(pg_transaction_status, CResRef connection) {
     PGSQL * pgsql = PGSQL::Get(connection);
 
-    if (pgsql == NULL) {
+    if (pgsql == nullptr) {
         return PQTRANS_UNKNOWN;
     }
 
-    return (int64_t)PQtransactionStatus(pgsql->get());
+    return (int64_t)pgsql->get().transactionStatus();
 }
 
 static Variant HHVM_FUNCTION(pg_last_error, CResRef connection) {
     PGSQL * pgsql = PGSQL::Get(connection);
-    if (pgsql == NULL) {
+    if (pgsql == nullptr) {
         return false;
     }
 
-    String ret(PQerrorMessage(pgsql->get()), CopyString);
+    String ret(pgsql->get().errorMessage(), CopyString);
 
     return f_trim(ret);
 }
 
 static Variant HHVM_FUNCTION(pg_last_notice, CResRef connection) {
     PGSQL * pgsql = PGSQL::Get(connection);
-    if (pgsql == NULL) {
+    if (pgsql == nullptr) {
         return false;
     }
 
@@ -623,18 +517,18 @@ static Variant HHVM_FUNCTION(pg_version, CResRef connection) {
     static StaticString server_key("server");
 
     PGSQL * pgsql = PGSQL::Get(connection);
-    if (pgsql == NULL) {
+    if (pgsql == nullptr) {
         return false;
     }
 
     Array ret;
 
-    int proto_ver = PQprotocolVersion(pgsql->get());
+    int proto_ver = pgsql->get().protocolVersion();
     if (proto_ver) {
         ret.set(protocol_key, String(proto_ver) + ".0");
     }
 
-    int server_ver = PQserverVersion(pgsql->get());
+    int server_ver = pgsql->get().serverVersion();
     if (server_ver) {
         int revision = server_ver % 100;
         int minor = (server_ver / 100) % 100;
@@ -657,87 +551,79 @@ static Variant HHVM_FUNCTION(pg_version, CResRef connection) {
 
 static int64_t HHVM_FUNCTION(pg_get_pid, CResRef connection) {
     PGSQL * pgsql = PGSQL::Get(connection);
-    if (pgsql == NULL) {
+    if (pgsql == nullptr) {
         return -1;
     }
 
-    return (int64_t)PQbackendPID(pgsql->get());
+    return (int64_t)pgsql->get().backendPID();
 }
 
 //////////////// Escaping Functions ///////////////////////////
 
 static String HHVM_FUNCTION(pg_escape_bytea, CResRef connection, const String& data) {
     PGSQL * pgsql = PGSQL::Get(connection);
-    if (pgsql == NULL) {
+    if (pgsql == nullptr) {
         return null_string;
     }
 
-    size_t escape_size = 0;
-    char * escaped = (char *)PQescapeByteaConn(pgsql->get(),
-            (unsigned char *)data.data(), data.size(), &escape_size);
+    std::string escaped = pgsql->get().escapeByteA(data.data(), data.size());
 
-    if (escaped == NULL) {
-        raise_warning("pg_escape_bytea(): %s", PQerrorMessage(pgsql->get()));
+    if (escaped.empty()) {
+        raise_warning("pg_escape_bytea(): %s", pgsql->get().errorMessage());
         return null_string;
     }
 
-    String ret(escaped, escape_size, CopyString);
-
-    PQfreemem(escaped);
+    String ret(escaped);
 
     return ret;
 }
 
 static String HHVM_FUNCTION(pg_escape_identifier, CResRef connection, const String& data) {
     PGSQL * pgsql = PGSQL::Get(connection);
-    if (pgsql == NULL) {
+    if (pgsql == nullptr) {
         return null_string;
     }
 
-    char * escaped = (char *)PQescapeIdentifier(pgsql->get(), data.data(), data.size());
+    std::string escaped = pgsql->get().escapeIdentifier(data.data(), data.size());
 
-    if (escaped == NULL) {
-        raise_warning("pg_escape_identifier(): %s", PQerrorMessage(pgsql->get()));
+    if (escaped.empty()) {
+        raise_warning("pg_escape_identifier(): %s", pgsql->get().errorMessage());
         return null_string;
     }
 
-    String ret(escaped, CopyString);
-
-    PQfreemem(escaped);
+    String ret(escaped);
 
     return ret;
 }
 
 static String HHVM_FUNCTION(pg_escape_literal, CResRef connection, const String& data) {
     PGSQL * pgsql = PGSQL::Get(connection);
-    if (pgsql == NULL) {
+    if (pgsql == nullptr) {
         return null_string;
     }
 
-    char * escaped = (char *)PQescapeLiteral(pgsql->get(), data.data(), data.size());
+    std::string escaped = pgsql->get().escapeLiteral(data.data(), data.size());
 
-    if (escaped == NULL) {
-        raise_warning("pg_escape_literal(): %s", PQerrorMessage(pgsql->get()));
+    if (escaped.empty()) {
+        raise_warning("pg_escape_literal(): %s", pgsql->get().errorMessage());
         return null_string;
     }
 
-    String ret(escaped, CopyString);
-
-    PQfreemem(escaped);
+    String ret(escaped);
 
     return ret;
 }
 
 static String HHVM_FUNCTION(pg_escape_string, CResRef connection, const String& data) {
     PGSQL * pgsql = PGSQL::Get(connection);
-    if (pgsql == NULL) {
+    if (pgsql == nullptr) {
         return null_string;
     }
 
     String ret((data.size()*2)+1, ReserveString); // Reserve enough space as defined by PQescapeStringConn
 
     int error = 0;
-    size_t size = PQescapeStringConn(pgsql->get(),
+    size_t size = pgsql->get().escapeString(
             ret.get()->mutableData(), data.data(), data.size(),
             &error);
 
@@ -761,17 +647,23 @@ static String HHVM_FUNCTION(pg_unescape_bytea, const String& data) {
 ///////////// Command Execution / Querying /////////////////////////////
 
 static int64_t HHVM_FUNCTION(pg_affected_rows, CResRef result) {
-    PGresult *res = PGSQLResult::GetResult(result);
-    return (int64_t)PQcmdTuples(res);
+    PGSQLResult *res = PGSQLResult::Get(result);
+    if (res == nullptr) return 0;
+
+    return (int64_t)res->get().cmdTuples();
 }
 
 static Variant HHVM_FUNCTION(pg_result_status, CResRef result, int64_t type /* = PGSQL_STATUS_LONG */) {
-    PGresult *res = PGSQLResult::GetResult(result);
+    PGSQLResult *res = PGSQLResult::Get(result);
 
     if (type == PGSQL_STATUS_LONG) {
-        return (int64_t)PQresultStatus(res);
+        if (res == nullptr) return 0;
+
+        return (int64_t)res->get().status();
     } else {
-        String ret(PQcmdStatus(res), CopyString);
+        if (res == nullptr) return null_string;
+
+        String ret(res->get().cmdStatus(), CopyString);
         return ret;
     }
 }
@@ -786,20 +678,13 @@ static bool HHVM_FUNCTION(pg_free_result, CResRef result) {
     }
 }
 
-static Variant HHVM_FUNCTION(pg_query, CResRef connection, const String& query) {
-    PGSQL *conn = PGSQL::Get(connection);
-    if (conn == NULL) {
-        return false;
-    }
-
-    PGresult *res = PQexec(conn->get(), query.data());
-
-    if (res == NULL) {
-        char * err = PQerrorMessage(conn->get());
-        raise_warning("pg_query(): Query Failed: %s", err);
-        return false;
+static bool _handle_query_result(const char *fn_name, PQ::Connection &conn, PQ::Result &result) {
+    if (!result) {
+        const char * err = conn.errorMessage();
+        raise_warning("%s(): Query Failed: %s", fn_name, err);
+        return true;
     } else {
-        int st = PQresultStatus(res);
+        int st = result.status();
         switch (st) {
             default:
                 break;
@@ -807,176 +692,148 @@ static Variant HHVM_FUNCTION(pg_query, CResRef connection, const String& query) 
             case PGRES_BAD_RESPONSE:
             case PGRES_NONFATAL_ERROR:
             case PGRES_FATAL_ERROR:
-                char * msg = PQresultErrorMessage(res);
-                raise_warning("pg_query(): Query Failed: %s", msg);
-                PQclear(res);
-                return false;
+                const char * msg = result.errorMessage();
+                raise_warning("%s(): Query Failed: %s", fn_name, msg);
+                return true;
         }
-
+        return false;
     }
 
-    PGSQLResult *pgresult = NEWOBJ(PGSQLResult)(conn, res);
+}
+
+static Variant HHVM_FUNCTION(pg_query, CResRef connection, const String& query) {
+    PGSQL *conn = PGSQL::Get(connection);
+    if (conn == nullptr) {
+        return false;
+    }
+
+    PQ::Result res = conn->get().exec(query.data());
+
+    if (_handle_query_result("pg_query", conn->get(), res))
+        return false;
+
+    PGSQLResult *pgresult = NEWOBJ(PGSQLResult)(conn, std::move(res));
 
     return Resource(pgresult);
 }
 
 static Variant HHVM_FUNCTION(pg_query_params, CResRef connection, const String& query, CArrRef params) {
     PGSQL *conn = PGSQL::Get(connection);
-    if (conn == NULL) {
+    if (conn == nullptr) {
         return false;
     }
 
     CStringArray str_array(params);
 
-    PGresult * res = PQexecParams(conn->get(), query.data(),
-            params.size(), NULL, str_array.data(), NULL, NULL, 0);
+    PQ::Result res = conn->get().exec(query.data(), params.size(), str_array.data());
 
-    if (res == NULL) {
-        char * err = PQerrorMessage(conn->get());
-        raise_warning("pg_query_params(): Query Failed: %s", err);
+    if (_handle_query_result("pg_query_params", conn->get(), res))
         return false;
-    } else {
-        int st = PQresultStatus(res);
-        switch (st) {
-            default:
-                break;
-            case PGRES_EMPTY_QUERY:
-            case PGRES_BAD_RESPONSE:
-            case PGRES_NONFATAL_ERROR:
-            case PGRES_FATAL_ERROR:
-                char * msg = PQresultErrorMessage(res);
-                raise_warning("pg_query_params(): Query Failed: %s", msg);
-                PQclear(res);
-                return false;
-        }
 
-    }
-
-    PGSQLResult *pgresult = NEWOBJ(PGSQLResult)(conn, res);
+    PGSQLResult *pgresult = NEWOBJ(PGSQLResult)(conn, std::move(res));
 
     return Resource(pgresult);
 }
 
 static Variant HHVM_FUNCTION(pg_prepare, CResRef connection, const String& stmtname, const String& query) {
     PGSQL *conn = PGSQL::Get(connection);
-    if (conn == NULL) {
+    if (conn == nullptr) {
         return false;
     }
 
-    PGresult *res = PQprepare(conn->get(), stmtname.data(), query.data(), 0, NULL);
+    PQ::Result res = conn->get().prepare(stmtname.data(), query.data(), 0);
 
-    if (res == NULL) {
-        char * err = PQerrorMessage(conn->get());
-        raise_warning("pg_prepare(): Query Failed: %s", err);
+    if (_handle_query_result("pg_prepare", conn->get(), res))
         return false;
-    } else {
-        int st = PQresultStatus(res);
-        switch (st) {
-            default:
-                break;
-            case PGRES_EMPTY_QUERY:
-            case PGRES_BAD_RESPONSE:
-            case PGRES_NONFATAL_ERROR:
-            case PGRES_FATAL_ERROR:
-                char * msg = PQresultErrorMessage(res);
-                raise_warning("pg_prepare(): Query Failed: %s", msg);
-                PQclear(res);
-                return false;
-        }
 
-    }
-
-    PGSQLResult *pgres = NEWOBJ(PGSQLResult)(conn, res);
+    PGSQLResult *pgres = NEWOBJ(PGSQLResult)(conn, std::move(res));
 
     return Resource(pgres);
 }
 
 static Variant HHVM_FUNCTION(pg_execute, CResRef connection, const String& stmtname, CArrRef params) {
     PGSQL *conn = PGSQL::Get(connection);
-    if (conn == NULL) {
+    if (conn == nullptr) {
         return false;
     }
 
     CStringArray str_array(params);
 
-    PGresult *res = PQexecPrepared(conn->get(), stmtname.data(), params.size(),
-            str_array.data(), NULL, NULL, 0);
+    PQ::Result res = conn->get().execPrepared(stmtname.data(), params.size(), str_array.data());
 
-    PGSQLResult *pgres = NEWOBJ(PGSQLResult)(conn, res);
+    PGSQLResult *pgres = NEWOBJ(PGSQLResult)(conn, std::move(res));
 
     return Resource(pgres);
 }
 
 static bool HHVM_FUNCTION(pg_send_query, CResRef connection, const String& query) {
     PGSQL *conn = PGSQL::Get(connection);
-    if (conn == NULL) {
+    if (conn == nullptr) {
         return false;
     }
 
-    bool origBlock = conn->isNonBlocking();
-    conn->setNonBlocking();
+    auto nb = conn->asNonBlocking();
 
-    PGresult *res;
     bool empty = true;
-    while ((res = PQgetResult(conn->get()))) {
-        PQclear(res);
+    PQ::Result res = conn->get().result();
+    while (res) {
+        res.clear();
         empty = false;
+        res = conn->get().result();
     }
     if (!empty) {
         raise_notice("There are results on this connection."
                      " Call pg_get_result() until it returns FALSE");
     }
 
-    if (PQsendQuery(conn->get(), query.data()) == 0) {
+    if (!conn->get().sendQuery(query.data())) {
         // TODO: Do persistent auto-reconnect
         return false;
     }
 
     int ret;
-    while ((ret = PQflush(conn->get()))) {
+    while ((ret = conn->get().flush())) {
         if (ret == -1) {
             raise_notice("Could not empty PostgreSQL send buffer");
             break;
         }
         usleep(5000);
     }
-
-    conn->setNonBlocking(origBlock);
 
     return true;
 }
 
 static Variant HHVM_FUNCTION(pg_get_result, CResRef connection) {
     PGSQL *conn = PGSQL::Get(connection);
-    if (conn == NULL) {
+    if (conn == nullptr) {
         return false;
     }
 
-    PGresult *res = PQgetResult(conn->get());
+    PQ::Result res = conn->get().result();
 
-    if (res == NULL) {
+    if (!res) {
         return false;
     }
 
-    PGSQLResult *pgresult = NEWOBJ(PGSQLResult)(conn, res);
+    PGSQLResult *pgresult = NEWOBJ(PGSQLResult)(conn, std::move(res));
 
     return Resource(pgresult);
 }
 
 static bool HHVM_FUNCTION(pg_send_query_params, CResRef connection, const String& query, CArrRef params) {
     PGSQL *conn = PGSQL::Get(connection);
-    if (conn == NULL) {
+    if (conn == nullptr) {
         return false;
     }
 
-    bool origBlock = conn->isNonBlocking();
-    conn->setNonBlocking();
+    auto nb = conn->asNonBlocking();
 
-    PGresult *res;
     bool empty = true;
-    while ((res = PQgetResult(conn->get()))) {
-        PQclear(res);
+    PQ::Result res = conn->get().result();
+    while (res) {
+        res.clear();
         empty = false;
+        res = conn->get().result();
     }
     if (!empty) {
         raise_notice("There are results on this connection."
@@ -985,13 +842,12 @@ static bool HHVM_FUNCTION(pg_send_query_params, CResRef connection, const String
 
     CStringArray str_array(params);
 
-    if (PQsendQueryParams(conn->get(), query.data(),
-            params.size(), NULL, str_array.data(), NULL, NULL, 0) == 0) {
+    if (!conn->get().sendQuery(query.data(), params.size(), str_array.data())) {
         return false;
     }
 
     int ret;
-    while ((ret = PQflush(conn->get()))) {
+    while ((ret = conn->get().flush())) {
         if (ret == -1) {
             raise_notice("Could not empty PostgreSQL send buffer");
             break;
@@ -999,49 +855,45 @@ static bool HHVM_FUNCTION(pg_send_query_params, CResRef connection, const String
         usleep(5000);
     }
 
-    conn->setNonBlocking(origBlock);
-
     return true;
 }
 
 static bool HHVM_FUNCTION(pg_send_prepare, CResRef connection, const String& stmtname, const String& query) {
     PGSQL *conn = PGSQL::Get(connection);
-    if (conn == NULL) {
+    if (conn == nullptr) {
         return false;
     }
 
-    return (bool)PQsendPrepare(conn->get(), stmtname.data(), query.data(), 0, NULL);
+    return conn->get().sendPrepare(stmtname.data(), query.data(), 0);
 }
 
 static bool HHVM_FUNCTION(pg_send_execute, CResRef connection, const String& stmtname, CArrRef params) {
     PGSQL *conn = PGSQL::Get(connection);
-    if (conn == NULL) {
+    if (conn == nullptr) {
         return false;
     }
 
     CStringArray str_array(params);
 
-    return (bool)PQsendQueryPrepared(conn->get(), stmtname.data(),
-            params.size(), str_array.data(), NULL, NULL, 0);
+    return conn->get().sendQueryPrepared(stmtname.data(),
+            params.size(), str_array.data());
 }
 
 static bool HHVM_FUNCTION(pg_cancel_query, CResRef connection) {
     PGSQL *conn = PGSQL::Get(connection);
-    if (conn == NULL) {
+    if (conn == nullptr) {
         return false;
     }
 
-    bool origBlock = conn->isNonBlocking();
-    conn->setNonBlocking();
+    auto nb = conn->asNonBlocking();
 
-    bool ret = PQrequestCancel(conn->get());
+    bool ret = conn->get().cancelRequest();
 
-    PGresult *res = NULL;
-    while((res = PQgetResult(conn->get()))) {
-        PQclear(res);
+    PQ::Result res = conn->get().result();
+    while(res) {
+        res.clear();
+        res = conn->get().result();
     }
-
-    conn->setNonBlocking(origBlock);
 
     return ret;
 }
@@ -1050,7 +902,7 @@ static bool HHVM_FUNCTION(pg_cancel_query, CResRef connection) {
 
 static Variant HHVM_FUNCTION(pg_fetch_all_columns, CResRef result, int64_t column /* = 0 */) {
     PGSQLResult *res = PGSQLResult::Get(result);
-    if (res == NULL) {
+    if (res == nullptr) {
         return false;
     }
 
@@ -1072,7 +924,7 @@ static Variant HHVM_FUNCTION(pg_fetch_all_columns, CResRef result, int64_t colum
 
 static Variant HHVM_FUNCTION(pg_fetch_array, CResRef result, CVarRef row /* = null_variant */, int64_t result_type /* = PGSQL_BOTH */) {
     PGSQLResult *res = PGSQLResult::Get(result);
-    if (res == NULL) {
+    if (res == nullptr) {
         return false;
     }
 
@@ -1100,7 +952,7 @@ static Variant HHVM_FUNCTION(pg_fetch_array, CResRef result, CVarRef row /* = nu
             arr.set(i, field);
         }
         if (result_type & PGSQL_ASSOC) {
-            char * name = PQfname(res->get(), i);
+            char * name = res->get().fieldName(i);
             String fn(name, CopyString);
             arr.set(fn, field);
         }
@@ -1115,7 +967,7 @@ static Variant HHVM_FUNCTION(pg_fetch_assoc, CResRef result, CVarRef row /* = nu
 
 static Variant HHVM_FUNCTION(pg_fetch_all, CResRef result) {
     PGSQLResult *res = PGSQLResult::Get(result);
-    if (res == NULL) {
+    if (res == nullptr) {
         return false;
     }
 
@@ -1132,7 +984,7 @@ static Variant HHVM_FUNCTION(pg_fetch_all, CResRef result) {
 
 static Variant HHVM_FUNCTION(pg_fetch_result, CResRef result, CVarRef row /* = null_variant */, CVarRef field /* = null_variant */) {
     PGSQLResult *res = PGSQLResult::Get(result);
-    if (res == NULL) {
+    if (res == nullptr) {
         return false;
     }
 
@@ -1147,7 +999,7 @@ static Variant HHVM_FUNCTION(pg_fetch_row, CResRef result, CVarRef row /* = null
 
 static Variant HHVM_FUNCTION(pg_field_is_null, CResRef result, CVarRef row, CVarRef field /* = null_variant */) {
     PGSQLResult *res = PGSQLResult::Get(result);
-    if (res == NULL) {
+    if (res == nullptr) {
         return false;
     }
 
@@ -1155,20 +1007,19 @@ static Variant HHVM_FUNCTION(pg_field_is_null, CResRef result, CVarRef row, CVar
 }
 
 static Variant HHVM_FUNCTION(pg_field_name, CResRef result, int64_t field_number) {
-    PGSQLResult *res_obj;
-    PGresult *res = PGSQLResult::GetResult(result, &res_obj);
-    if (res == NULL) {
+    PGSQLResult *res = PGSQLResult::Get(result);
+    if (res == nullptr) {
         return null_variant;
     }
 
-    if (field_number < 0 || field_number >= res_obj->getNumFields()) {
+    if (field_number < 0 || field_number >= res->getNumFields()) {
         raise_warning("pg_field_name(): Column offset `%d` out of range", (int)field_number);
         return false;
     }
 
-    char * name = PQfname(res, (int)field_number);
-    if (name == NULL) {
-        raise_warning("pg_field_name(): %s", PQresultErrorMessage(res));
+    char * name = res->get().fieldName((int)field_number);
+    if (name == nullptr) {
+        raise_warning("pg_field_name(): %s", res->get().errorMessage());
         return false;
     } else {
         return String(name, CopyString);
@@ -1176,31 +1027,30 @@ static Variant HHVM_FUNCTION(pg_field_name, CResRef result, int64_t field_number
 }
 
 static int64_t HHVM_FUNCTION(pg_field_num, CResRef result, const String& field_name) {
-    PGresult *res = PGSQLResult::GetResult(result);
-    if (res == NULL) {
+    PGSQLResult *res = PGSQLResult::Get(result);
+    if (res == nullptr) {
         return -1;
     }
 
-    return PQfnumber(res, field_name.data());
+    return res->get().fieldNumber(field_name.data());
 }
 
 static Variant HHVM_FUNCTION(pg_field_prtlen, CResRef result, CVarRef row_number, CVarRef field /* = null_variant */) {
     PGSQLResult *res = PGSQLResult::Get(result);
-    if (res == NULL) {
+    if (res == nullptr) {
         return false;
     }
 
     int r, f;
     if (res->convertFieldRow(row_number, field, &r, &f, "pg_field_prtlen")) {
-        return PQgetlength(res->get(), r, f);
-    } else {
-        return false;
+        return res->get().getLength(r, f);
     }
+    return false;
 }
 
 static Variant HHVM_FUNCTION(pg_field_size, CResRef result, int64_t field_number) {
     PGSQLResult *res = PGSQLResult::Get(result);
-    if (res == NULL) {
+    if (res == nullptr) {
         return false;
     }
 
@@ -1209,13 +1059,13 @@ static Variant HHVM_FUNCTION(pg_field_size, CResRef result, int64_t field_number
         return false;
     }
 
-    return PQfsize(res->get(), field_number);
+    return res->get().size(field_number);
 }
 
 static Variant HHVM_FUNCTION(pg_field_table, CResRef result, int64_t field_number, bool oid_only /* = false */) {
     PGSQLResult *res = PGSQLResult::Get(result);
 
-    if (res == NULL) {
+    if (res == nullptr) {
         return false;
     }
 
@@ -1224,7 +1074,7 @@ static Variant HHVM_FUNCTION(pg_field_table, CResRef result, int64_t field_numbe
         return false;
     }
 
-    Oid id = PQftable(res->get(), field_number);
+    Oid id = res->get().table(field_number);
     if (id == InvalidOid) return false;
 
     if (oid_only) {
@@ -1234,23 +1084,19 @@ static Variant HHVM_FUNCTION(pg_field_table, CResRef result, int64_t field_numbe
         std::ostringstream query;
         query << "SELECT relname FROM pg_class WHERE oid=" << id;
 
-        PGresult *name_res = PQexec(res->getConn()->get(), query.str().c_str());
+        PQ::Result name_res = res->getConn()->get().exec(query.str().c_str());
         if (!name_res)
             return false;
 
-        if (PQresultStatus(name_res) != PGRES_TUPLES_OK) {
-            PQclear(name_res);
+        if (name_res.status() != PGRES_TUPLES_OK)
             return false;
-        }
 
-        char * name = PQgetvalue(name_res, 0, 0);
-        if (name == NULL) {
-            PQclear(name_res);
+        char * name = name_res.getValue(0, 0);
+        if (name == nullptr) {
             return false;
         }
 
         String ret(name, CopyString);
-        PQclear(name_res);
 
         return ret;
     }
@@ -1259,7 +1105,7 @@ static Variant HHVM_FUNCTION(pg_field_table, CResRef result, int64_t field_numbe
 static Variant HHVM_FUNCTION(pg_field_type_oid, CResRef result, int64_t field_number) {
     PGSQLResult *res = PGSQLResult::Get(result);
 
-    if (res == NULL) {
+    if (res == nullptr) {
         return false;
     }
 
@@ -1268,7 +1114,7 @@ static Variant HHVM_FUNCTION(pg_field_type_oid, CResRef result, int64_t field_nu
         return false;
     }
 
-    Oid id = PQftype(res->get(), field_number);
+    Oid id = res->get().type(field_number);
     if (id == InvalidOid) return false;
     return (int64_t)id;
 }
@@ -1277,7 +1123,7 @@ static Variant HHVM_FUNCTION(pg_field_type_oid, CResRef result, int64_t field_nu
 static Variant HHVM_FUNCTION(pg_field_type, CResRef result, int64_t field_number) {
     PGSQLResult *res = PGSQLResult::Get(result);
 
-    if (res == NULL) {
+    if (res == nullptr) {
         return false;
     }
 
@@ -1286,37 +1132,32 @@ static Variant HHVM_FUNCTION(pg_field_type, CResRef result, int64_t field_number
         return false;
     }
 
-    Oid id = PQftype(res->get(), field_number);
+    Oid id = res->get().type(field_number);
     if (id == InvalidOid) return false;
 
     // This should really get all of the rows in pg_type and build a map
     std::ostringstream query;
         query << "SELECT typname FROM pg_type WHERE oid=" << id;
 
-    PGresult *name_res = PQexec(res->getConn()->get(), query.str().c_str());
+    PQ::Result name_res = res->getConn()->get().exec(query.str().c_str());
     if (!name_res)
         return false;
 
-    if (PQresultStatus(name_res) != PGRES_TUPLES_OK) {
-        PQclear(name_res);
+    if (name_res.status() != PGRES_TUPLES_OK)
         return false;
-    }
 
-    char * name = PQgetvalue(name_res, 0, 0);
-    if (name == NULL) {
-        PQclear(name_res);
+    char * name = name_res.getValue(0, 0);
+    if (name == nullptr)
         return false;
-    }
 
     String ret(name, CopyString);
-    PQclear(name_res);
 
     return ret;
 }
 
 static int64_t HHVM_FUNCTION(pg_num_fields, CResRef result) {
     PGSQLResult *res = PGSQLResult::Get(result);
-    if (res == NULL) {
+    if (res == nullptr) {
         return -1;
     }
 
@@ -1325,7 +1166,7 @@ static int64_t HHVM_FUNCTION(pg_num_fields, CResRef result) {
 
 static int64_t HHVM_FUNCTION(pg_num_rows, CResRef result) {
     PGSQLResult *res = PGSQLResult::Get(result);
-    if (res == NULL) {
+    if (res == nullptr) {
         return -1;
     }
 
@@ -1334,11 +1175,11 @@ static int64_t HHVM_FUNCTION(pg_num_rows, CResRef result) {
 
 static Variant HHVM_FUNCTION(pg_result_error_field, CResRef result, int64_t fieldcode) {
     PGSQLResult *res = PGSQLResult::Get(result);
-    if (res == NULL) {
+    if (res == nullptr) {
         return false;
     }
 
-    char * msg = PQresultErrorField(res->get(), fieldcode);
+    char * msg = res->get().errorField(fieldcode);
     if (msg) {
         return f_trim(String(msg, CopyString));
     }
@@ -1348,11 +1189,11 @@ static Variant HHVM_FUNCTION(pg_result_error_field, CResRef result, int64_t fiel
 
 static Variant HHVM_FUNCTION(pg_result_error, CResRef result) {
     PGSQLResult *res = PGSQLResult::Get(result);
-    if (res == NULL) {
+    if (res == nullptr) {
         return false;
     }
 
-    char * msg = PQresultErrorMessage(res->get());
+    const char * msg = res->get().errorMessage();
     if (msg) {
         return f_trim(String(msg, CopyString));
     }
@@ -1362,7 +1203,7 @@ static Variant HHVM_FUNCTION(pg_result_error, CResRef result) {
 
 static bool HHVM_FUNCTION(pg_result_seek, CResRef result, int64_t offset) {
     PGSQLResult *res = PGSQLResult::Get(result);
-    if (res == NULL) {
+    if (res == nullptr) {
         return false;
     }
 
@@ -1409,7 +1250,6 @@ public:
         HHVM_FE(pg_client_encoding);
         HHVM_FE(pg_close);
         HHVM_FE(pg_connect);
-        HHVM_FE(pg_async_connect);
         HHVM_FE(pg_connection_busy);
         HHVM_FE(pg_connection_reset);
         HHVM_FE(pg_connection_status);
