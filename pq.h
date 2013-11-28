@@ -237,7 +237,7 @@ public:
 	}
 
 	bool sendQuery(const char *command, int nParams, const char * const *paramValues) {
-		return (bool)PQexecParams(m_conn, command, nParams, NULL,
+		return (bool)PQsendQueryParams(m_conn, command, nParams, NULL,
 				paramValues, NULL, NULL, 0);
 	}
 
