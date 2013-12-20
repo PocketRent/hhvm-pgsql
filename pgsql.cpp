@@ -154,13 +154,16 @@ PGSQL::PGSQL(String conninfo)
         m_host = m_conn.host();
         m_port = m_conn.port();
         m_options = m_conn.options();
+
+        if (!PGSQL::IgnoreNotice) {
+            m_conn.setNoticeProcessor(notice_processor, this);
+        } else {
+            m_conn.setNoticeProcessor<PGSQL>(notice_processor, nullptr);
+        }
+    } else if (st == CONNECTION_BAD) {
+        m_conn.finish();
     }
 
-    if (!PGSQL::IgnoreNotice) {
-        m_conn.setNoticeProcessor(notice_processor, this);
-    } else {
-        m_conn.setNoticeProcessor<PGSQL>(notice_processor, nullptr);
-    }
 }
 
 PGSQL::~PGSQL() { m_conn.finish(); }
