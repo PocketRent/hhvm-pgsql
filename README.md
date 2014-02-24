@@ -6,6 +6,12 @@ This is an implementation of the `pgsql` PHP extension for the [HipHop PHP VM][f
 
 This extension only requires the `libpq` library distributed with Postgres and HipHop VM itself.
 
+### Pre-built versions
+
+We supply pre-built versions of this extension for both Debian 7 Wheezy and Debian 8 Jessie.
+These can be found [here](https://beatbox.pocketrent.com/source/pgsql/) and should be renamed to `pgsql.so` before you
+follow the below installation instructions.
+
 ### Building & Installation
 
 Installation requires a copy of HipHop to be built from source on the local machine, instructions
