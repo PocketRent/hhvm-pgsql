@@ -76,10 +76,6 @@ namespace HPHP {
 			m_resolvedQuery = (std::string)nsql;
 		}
 
-		if(m_resolvedQuery.empty()){
-			m_resolvedQuery = (std::string)sql;
-		}
-
 		return true;
 	}
 
@@ -98,7 +94,7 @@ namespace HPHP {
 			}
 
 			std::stringstream q;
-			q << "DECLARE " << m_cursorName << " SCROLL CURSOR WITH HOLD FOR " << m_resolvedQuery;
+			q << "DECLARE " << m_cursorName << " SCROLL CURSOR WITH HOLD FOR " << active_query_string.data();
 
 			m_result = m_conn->exec(q.str());
 
@@ -161,7 +157,7 @@ stmt_retry:
 
 			m_result = m_conn->execPrepared(m_stmtName.c_str(), bound_params.size(), params.data(), param_lengths.data(), param_formats.data());
 		} else {
-			m_result = m_conn->exec(m_resolvedQuery.c_str());
+			m_result = m_conn->exec(active_query_string.data());
 		}
 
 		status = m_result.status();
