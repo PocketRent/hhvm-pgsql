@@ -1225,6 +1225,17 @@ static bool HHVM_FUNCTION(pg_result_seek, const Resource& result, int64_t offset
     return true;
 }
 
+static Variant HHVM_FUNCTION(pg_last_oid, const Resource& result) {
+    PGSQLResult *res = PGSQLResult::Get(result);
+    if (res == nullptr) {
+        FAIL_RETURN;
+    }
+
+    Oid oid = res->get().oidValue();
+
+    if (oid == InvalidOid) FAIL_RETURN;
+    else return String((int64_t)oid);
+}
 ///////////////////////////////////////////////////////////////////////////////
 
 bool PGSQL::AllowPersistent     = true;
@@ -1288,6 +1299,7 @@ public:
         HHVM_FE(pg_host);
         HHVM_FE(pg_last_error);
         HHVM_FE(pg_last_notice);
+        HHVM_FE(pg_last_oid);
         HHVM_FE(pg_num_fields);
         HHVM_FE(pg_num_rows);
         HHVM_FE(pg_options);

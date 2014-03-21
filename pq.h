@@ -105,6 +105,10 @@ public:
 		return PQftype(m_res, column_number);
 	}
 
+	Oid oidValue() {
+		return PQoidValue(m_res);
+	}
+
 	friend class Connection;
 private:
 	Result(PGresult *res) : m_res(res) {}
