@@ -11,6 +11,12 @@ ELSE()
     MESSAGE(FATAL_ERROR "Cannot find libpq library")
 ENDIF()
 
+option(HACK_FRIENDLY "Alters the API to make it work better with the Hack typechecker")
+
+if (HACK_FRIENDLY)
+    add_definitions(-DHACK_FRIENDLY)
+endif()
+
 include_directories(${PGSQL_INCLUDE_DIR})
 
 HHVM_EXTENSION(pgsql pgsql.cpp)
