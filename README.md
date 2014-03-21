@@ -63,9 +63,7 @@ There are a few differences from the standard Zend implementation.
   * `pg_convert`
   * `pg_copy_from`
   * `pg_copy_to`
-  * `pg_field_type`
   * `pg_insert`
-  * `pg_last_oid`
   * `pg_lo_close`
   * `pg_lo_create`
   * `pg_lo_export`
