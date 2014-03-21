@@ -1,6 +1,6 @@
 ## Postgres Extension for HipHop
 
-This is an implementation of the `pgsql` PHP extension for the [HipHop PHP VM][fb-hphp].
+This is an implementation of the `pgsql` PHP extension for [HHVM][fb-hphp].
 
 ### Prerequisites
 
@@ -14,13 +14,13 @@ follow the below installation instructions.
 
 ### Building & Installation
 
-Installation requires a copy of HipHop to be built from source on the local machine, instructions
-on how to do this are available on the [HipHop Wiki][fb-wiki]. Once done, the following commands
-will build the extension.
+Installation requires a copy of HHVM to be built from source on the local machine, instructions
+on how to do this are available on the [HHVM Wiki][fb-wiki]. Once done, the following commands
+will build the extension, assuming you've also installed HHVM.
 
 ~~~
 $ cd /path/to/extension
-$ $HPHP_HOME/hphp/tools/hphpize/hphpize
+$ hphpize
 $ cmake .
 $ make
 ~~~
@@ -38,6 +38,20 @@ DynamicExtensions {
 
 Where `/path/to/hhvm/extensions` is a folder containing all HipHop extensions, and `pgsql.so` is in
 it. This will cause the extension to be loaded when the virtual machine starts up.
+
+### Hack Friendly Mode
+
+If you are using Hack, then you can use the provided `pgsql.hhi` file to type the functions. There
+is also a compile-time option that can be passed to cmake that makes some minor adjustments to the
+API to make the Hack type checker more useful with them. This mostly consists of altering
+functions that would normally return `FALSE` on error and making them return `null` instead. This
+takes advantage of the nullable types in Hack.
+
+To enable Hack-friendly mode use this command instead of the `cmake` one above:
+
+~~~
+$ cmake -DHACK_FRIENDLY=ON .
+~~~
 
 ### Differences from Zend
 
@@ -78,5 +92,5 @@ Otherwise, all functionality is (or should be) the same as the Zend implementati
 
 As always, bugs should be reported to the issue tracker and patches are very welcome.
 
-[fb-hphp]: https://github.com/facebook/hhvm "HipHop PHP"
-[fb-wiki]: https://github.com/facebook/hhvm/wiki "HipHop Wiki"
+[fb-hphp]: https://github.com/facebook/hhvm "HHVM"
+[fb-wiki]: https://github.com/facebook/hhvm/wiki "HHVM Wiki"

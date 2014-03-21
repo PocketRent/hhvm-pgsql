@@ -44,11 +44,11 @@ function pg_fetch_all(resource $result): ?array<int,array<string,mixed>>;
 
 function pg_fetch_array(resource $result, ?int $row = null, int $result_type = 3): ?array;
 
-function pg_fetch_assoc(resource $result, ?int $row = null): ?array<string,mixed>;
+function pg_fetch_assoc(resource $result, ?int $row = null): ?array<string,?string>;
 
 function pg_fetch_result(resource $result, ?int $row = null, mixed $field = null): mixed;
 
-function pg_fetch_row(resource $result, ?int $row = null): ?array<int,mixed>;
+function pg_fetch_row(resource $result, ?int $row = null): ?array<int,?string>;
 
 function pg_field_is_null(resource $result, mixed $row, mixed $field = null): ?int;
 
@@ -133,4 +133,3 @@ function pg_unescape_bytea(string $data): string;
 function pg_untrace(resource $connection): bool;
 
 function pg_version(resource $connection): ?array;
-
