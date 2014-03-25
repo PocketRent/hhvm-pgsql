@@ -3,6 +3,10 @@
 <<__Native>>
 function pg_affected_rows(resource $result): int;
 
+function pg_cmdtuples(resource $result): int {
+    return pg_affected_rows($result);
+}
+
 <<__Native>>
 function pg_cancel_query(resource $connection): bool;
 
@@ -57,6 +61,10 @@ function pg_escape_string(resource $connection, string $data): string;
 <<__Native>>
 function pg_execute(resource $connection, string $stmtname, array<mixed> $params): ?resource;
 
+function pg_exec(resource $connection, string $stmtname, array<mixed> $params): ?resource {
+    return pg_execute($connection, $stmtname, $params);
+}
+
 <<__Native>>
 function pg_fetch_all_columns(resource $result, int $column=0): ?array<string,mixed>;
 
@@ -81,6 +89,10 @@ function pg_field_is_null(resource $result, mixed $row, mixed $field = null): ?i
 <<__Native>>
 function pg_field_name(resource $result, int $field_number): ?string;
 
+function pg_fieldname(resource $result, int $field_number): ?string {
+    return pg_field_name($result, $field_number);
+}
+
 <<__Native>>
 function pg_field_num(resource $result, string $field_name): int;
 
@@ -89,6 +101,10 @@ function pg_field_prtlen(resource $result, mixed $row_number, mixed $field = nul
 
 <<__Native>>
 function pg_field_size(resource $result, int $field_number): ?int;
+
+function pg_fieldsize(resource $result, int $field_number): ?int {
+    return pg_field_size($result, $field_number);
+}
 
 <<__Native>>
 function pg_field_table(resource $result, int $field_number, bool $oid_only = false): mixed;
@@ -99,8 +115,16 @@ function pg_field_type_oid(resource $result, int $field_number): ?int;
 <<__Native>>
 function pg_field_type(resource $result, int $field_number): ?string;
 
+function pg_fieldtype(resource $result, int $field_number): ?string {
+    return pg_field_type($result, $field_number);
+}
+
 <<__Native>>
 function pg_free_result(resource $result): bool;
+
+function pg_freeresult(resource $result): bool {
+    return pg_free_result($result);
+}
 
 <<__Native>>
 function pg_get_notify(resource $connection, int $result_type = 3): mixed;
@@ -117,11 +141,19 @@ function pg_host(resource $connection): ?string;
 <<__Native>>
 function pg_last_error(resource $connection): ?string;
 
+function pg_errormessage(resource $connection): ?string {
+    return pg_last_error($connection);
+}
+
 <<__Native>>
 function pg_last_notice(resource $connection): ?string;
 
 <<__Native>>
 function pg_last_oid(resource $result): mixed;
+
+function pg_getlastoid(resource $result): mixed {
+    return pg_last_oid($result);
+}
 
 <<__Native>>
 function pg_meta_data(resource $connection, string $table_name): mixed;
@@ -129,8 +161,16 @@ function pg_meta_data(resource $connection, string $table_name): mixed;
 <<__Native>>
 function pg_num_fields(resource $result): int;
 
+function pg_numfields(resource $result): int {
+    return pg_num_fields($result);
+}
+
 <<__Native>>
 function pg_num_rows(resource $result): int;
+
+function pg_numrows(resource $result): int {
+    return pg_num_rows($result);
+}
 
 <<__Native>>
 function pg_options(resource $connection): ?string;
