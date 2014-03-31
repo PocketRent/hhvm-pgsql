@@ -20,6 +20,6 @@ endif()
 include_directories(${PGSQL_INCLUDE_DIR})
 
 HHVM_EXTENSION(pgsql pgsql.cpp)
-HHVM_SYSTEMLIB(pgsql pgsql.php)
+HHVM_SYSTEMLIB(pgsql ext_pgsql.php)
 
 target_link_libraries(pgsql ${PGSQL_LIBRARY})
