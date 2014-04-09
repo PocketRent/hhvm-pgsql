@@ -1,7 +1,7 @@
 #include "pdo_pgsql_connection.h"
 #include "pdo_pgsql_statement.h"
 #include "pdo_pgsql.h"
-#include "hphp/runtime/ext/ext_stream.h"
+#include "hphp/runtime/ext/stream/ext_stream.h"
 #include "hphp/runtime/vm/jit/translator-inline.h"
 #include "pq.h"
 #undef PACKAGE_VERSION // pg_config defines it
@@ -108,7 +108,7 @@ namespace HPHP {
 		}
 	}
 
-	bool PDOPgSqlConnection::create(CArrRef options){
+	bool PDOPgSqlConnection::create(const Array &options){
 		long connect_timeout = pdo_attr_lval(options, PDO_ATTR_TIMEOUT, 30);
 		struct pdo_data_src_parser vars[] = {
 		{ "host", "localhost", 0 },
@@ -376,7 +376,7 @@ namespace HPHP {
 		}
 	}
 
-	bool PDOPgSqlConnection::setAttribute(int64_t attr, CVarRef value){
+	bool PDOPgSqlConnection::setAttribute(int64_t attr, const Variant &value){
 		switch(attr){
 			case PDO_ATTR_EMULATE_PREPARES:
 				m_emulate_prepare = value.toBoolean();
@@ -390,7 +390,7 @@ namespace HPHP {
 		return method != MethodPersistentShutdown;
 	}
 
-	bool PDOPgSqlConnection::preparer(const String& sql, sp_PDOStatement* stmt, CVarRef options){
+	bool PDOPgSqlConnection::preparer(const String& sql, sp_PDOStatement* stmt, const Variant &options){
 		PDOPgSqlStatement* s = NEWOBJ(PDOPgSqlStatement)(this, m_conn);
 		*stmt = s;
 
