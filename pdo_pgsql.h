@@ -11,8 +11,8 @@ namespace HPHP {
 		virtual PDOConnection* createConnectionObject();
 	};
 
-	long pdo_attr_lval(const CArrRef& options, int opt, long defaultValue);
+	long pdo_attr_lval(const Array& options, int opt, long defaultValue);
 
-	String pdo_attr_strval(const CVarRef& options, int opt, const char *def);
+	String pdo_attr_strval(const Array& options, int opt, const char *def);
 }
 #endif

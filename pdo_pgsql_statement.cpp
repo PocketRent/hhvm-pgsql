@@ -39,7 +39,7 @@ namespace HPHP {
 		m_conn = NULL;
 	}
 
-	bool PDOPgSqlStatement::create(const String& sql, CArrRef options){
+	bool PDOPgSqlStatement::create(const String& sql, const Array &options){
 		supports_placeholders = PDO_PLACEHOLDER_NAMED;
 
 		bool scrollable = pdo_attr_lval(options, PDO_ATTR_CURSOR, PDO_CURSOR_FWDONLY) == PDO_CURSOR_SCROLL;
