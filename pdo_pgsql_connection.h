@@ -14,7 +14,7 @@ namespace HPHP {
 		PDOPgSqlConnection();
 		virtual ~PDOPgSqlConnection();
 
-		virtual bool create(CArrRef options);
+		virtual bool create(const Array &options);
 
 		virtual int64_t doer(const String& sql);
 
@@ -33,13 +33,13 @@ namespace HPHP {
 		virtual String lastId(const char *name);
 
 		virtual int getAttribute(int64_t attr, Variant &value);
-		virtual bool setAttribute(int64_t attr, CVarRef value);
+		virtual bool setAttribute(int64_t attr, const Variant &value);
 
 		virtual bool fetchErr(PDOStatement* stmt, Array &info);
 
 		String pgsqlLOBCreate();
 
-		virtual bool preparer(const String& sql, sp_PDOStatement *stmt, CVarRef options);
+		virtual bool preparer(const String& sql, sp_PDOStatement *stmt, const Variant &options);
 	private:
 		PQ::Connection* m_conn;
 		Oid pgoid;

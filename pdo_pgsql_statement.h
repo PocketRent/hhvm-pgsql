@@ -22,7 +22,7 @@ namespace HPHP {
 		PDOPgSqlStatement(PDOPgSqlConnection* m_pdoconn, PQ::Connection* pq);
 		virtual ~PDOPgSqlStatement();
 
-		bool create(const String& sql, CArrRef options);
+		bool create(const String& sql, const Array &options);
 
 		virtual bool executer();
 		virtual bool fetcher(PDOFetchOrientation ori, long offset);
