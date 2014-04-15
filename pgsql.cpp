@@ -981,6 +981,9 @@ static Variant HHVM_FUNCTION(pg_fetch_all, const Resource& result) {
     }
 
     int num_rows = res->getNumRows();
+    if (num_rows == 0) {
+        FAIL_RETURN;
+    }
 
     Array rows;
     for (int i = 0; i < num_rows; i++) {
