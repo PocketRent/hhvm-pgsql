@@ -300,7 +300,7 @@ public:
 
 		std::string ret;
 		if (escaped) {
-			ret.assign(escaped, escape_size);
+			ret.assign(escaped, escape_size-1);
 			PQfreemem(escaped);
 		}
 
