@@ -1257,12 +1257,12 @@ public:
     {
         Hdf pgsql = hdf["PGSQL"];
 
-        PGSQL::AllowPersistent       = pgsql["AllowPersistent"].getBool(true);
-        PGSQL::MaxPersistent         = pgsql["MaxPersistent"].getInt32(-1);
-        PGSQL::MaxLinks              = pgsql["MaxLinks"].getInt32(-1);
-        PGSQL::AutoResetPersistent   = pgsql["AutoResetPersistent"].getBool();
-        PGSQL::IgnoreNotice          = pgsql["IgnoreNotice"].getBool();
-        PGSQL::LogNotice             = pgsql["LogNotice"].getBool();
+        PGSQL::AllowPersistent       = pgsql["AllowPersistent"].configGetBool(true);
+        PGSQL::MaxPersistent         = pgsql["MaxPersistent"].configGetInt32(-1);
+        PGSQL::MaxLinks              = pgsql["MaxLinks"].configGetInt32(-1);
+        PGSQL::AutoResetPersistent   = pgsql["AutoResetPersistent"].configGetBool();
+        PGSQL::IgnoreNotice          = pgsql["IgnoreNotice"].configGetBool();
+        PGSQL::LogNotice             = pgsql["LogNotice"].configGetBool();
 
     }
 
