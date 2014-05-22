@@ -318,22 +318,16 @@ public:
         int size = arr.size();
 
         m_strings.reserve(size);
+        m_c_strs.reserve(size);
 
-        for(int i = 0; i < size; i++) {
-            const Variant &param = arr[i];
+        for (ArrayIter iter(arr); iter; ++iter) {
+            const Variant &param = iter.secondRef();
             if (param.isNull()) {
                 m_strings.push_back(null_string);
-            } else {
-                m_strings.push_back(param.toString());
-            }
-        }
-
-        m_c_strs.reserve(size);
-        for (int i = 0; i < size; i++) {
-            if (m_strings[i].isNull()) {
                 m_c_strs.push_back(nullptr);
             } else {
-                m_c_strs.push_back(m_strings[i].data());
+                m_strings.push_back(param.toString());
+                m_c_strs.push_back(param.toString().data());
             }
         }
     }
