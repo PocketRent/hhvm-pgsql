@@ -1247,16 +1247,16 @@ static class pgsqlExtension : public Extension {
 public:
     pgsqlExtension() : Extension("pgsql") {}
 
-    virtual void moduleLoad(Hdf hdf)
+    virtual void moduleLoad(const IniSetting::Map& ini, Hdf hdf)
     {
         Hdf pgsql = hdf["PGSQL"];
 
-        PGSQL::AllowPersistent       = pgsql["AllowPersistent"].configGetBool(true);
-        PGSQL::MaxPersistent         = pgsql["MaxPersistent"].configGetInt32(-1);
-        PGSQL::MaxLinks              = pgsql["MaxLinks"].configGetInt32(-1);
-        PGSQL::AutoResetPersistent   = pgsql["AutoResetPersistent"].configGetBool();
-        PGSQL::IgnoreNotice          = pgsql["IgnoreNotice"].configGetBool();
-        PGSQL::LogNotice             = pgsql["LogNotice"].configGetBool();
+        PGSQL::AllowPersistent     = Config::GetBool(ini, pgsql["AllowPersistent"], true);
+        PGSQL::MaxPersistent       = Config::GetInt32(ini, pgsql["MaxPersistent"], -1);
+        PGSQL::MaxLinks            = Config::GetInt32(ini, pgsql["MaxLinks"], -1);
+        PGSQL::AutoResetPersistent = Config::GetBool(ini, pgsql["AutoResetPersistent"]);
+        PGSQL::IgnoreNotice        = Config::GetBool(ini, pgsql["IgnoreNotice"]);
+        PGSQL::LogNotice           = Config::GetBool(ini, pgsql["LogNotice"]);
 
     }
 
