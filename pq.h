@@ -123,7 +123,8 @@ public:
 	Connection& operator=(const Connection&) = delete;
 
 	explicit Connection(const char *conninfo) {
-		m_conn = PQconnectdb(conninfo);
+        if (conninfo != nullptr)
+            m_conn = PQconnectdb(conninfo);
 	}
 
 	explicit Connection(const std::string& conninfo) {
