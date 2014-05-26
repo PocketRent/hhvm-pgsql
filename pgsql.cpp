@@ -575,22 +575,16 @@ public:
         int size = arr.size();
 
         m_strings.reserve(size);
+        m_c_strs.reserve(size);
 
-        for(int i = 0; i < size; i++) {
-            const Variant &param = arr[i];
+        for (ArrayIter iter(arr); iter; ++iter) {
+            const Variant &param = iter.secondRef();
             if (param.isNull()) {
                 m_strings.push_back(null_string);
-            } else {
-                m_strings.push_back(param.toString());
-            }
-        }
-
-        m_c_strs.reserve(size);
-        for (int i = 0; i < size; i++) {
-            if (m_strings[i].isNull()) {
                 m_c_strs.push_back(nullptr);
             } else {
-                m_c_strs.push_back(m_strings[i].data());
+                m_strings.push_back(param.toString());
+                m_c_strs.push_back(param.toString().data());
             }
         }
     }
@@ -1525,16 +1519,16 @@ static class pgsqlExtension : public Extension {
 public:
     pgsqlExtension() : Extension("pgsql") {}
 
-    virtual void moduleLoad(Hdf hdf)
+    virtual void moduleLoad(const IniSetting::Map& ini, Hdf hdf)
     {
         Hdf pgsql = hdf["PGSQL"];
 
-        PGSQL::AllowPersistent       = pgsql["AllowPersistent"].configGetBool(true);
-        PGSQL::MaxPersistent         = pgsql["MaxPersistent"].configGetInt32(-1);
-        PGSQL::MaxLinks              = pgsql["MaxLinks"].configGetInt32(-1);
-        PGSQL::AutoResetPersistent   = pgsql["AutoResetPersistent"].configGetBool();
-        PGSQL::IgnoreNotice          = pgsql["IgnoreNotice"].configGetBool();
-        PGSQL::LogNotice             = pgsql["LogNotice"].configGetBool();
+        PGSQL::AllowPersistent     = Config::GetBool(ini, pgsql["AllowPersistent"], true);
+        PGSQL::MaxPersistent       = Config::GetInt32(ini, pgsql["MaxPersistent"], -1);
+        PGSQL::MaxLinks            = Config::GetInt32(ini, pgsql["MaxLinks"], -1);
+        PGSQL::AutoResetPersistent = Config::GetBool(ini, pgsql["AutoResetPersistent"]);
+        PGSQL::IgnoreNotice        = Config::GetBool(ini, pgsql["IgnoreNotice"]);
+        PGSQL::LogNotice           = Config::GetBool(ini, pgsql["LogNotice"]);
 
     }
 
