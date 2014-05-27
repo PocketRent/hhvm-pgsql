@@ -49,6 +49,7 @@ public:
 
     static PGSQLConnectionPoolContainer& Instance()
     {
+        // lock?
         static PGSQLConnectionPoolContainer instance;
         return instance;
     }
@@ -57,8 +58,6 @@ public:
     void operator=(PGSQLConnectionPoolContainer const&);
 
     ~PGSQLConnectionPoolContainer();
-
-
 
     PGSQLConnectionPool& GetPool(const std::string);
     std::vector<PGSQLConnectionPool *> &GetPools();
@@ -72,10 +71,9 @@ private:
     int m_maximumConnections;
     Mutex m_lock;
     std::string m_connectionString;
+    std::string m_cleanedConnectionString;
     std::queue<PQ::Connection*> m_availableConnections;
     std::vector<PQ::Connection*> m_connections;
-
-
 
     long m_sweepedConnections = 0;
     long m_openedConnections = 0;
@@ -103,6 +101,7 @@ public:
     void Release(PQ::Connection& connection);
 
     std::string GetConnectionString() const { return m_connectionString; }
+    std::string GetCleanedConnectionString() const { return m_cleanedConnectionString; }
 
     void CloseAllConnections();
     void CloseFreeConnections();
@@ -510,6 +509,18 @@ PQ::Connection& PGSQLConnectionPool::GetConnection()
         raise_error("Getting connection from pool failed.");
     }
 
+    if (m_cleanedConnectionString == "")
+    {
+        m_cleanedConnectionString.append("host=");
+        m_cleanedConnectionString.append(conn.host());
+        m_cleanedConnectionString.append(" port=");
+        m_cleanedConnectionString.append(conn.port());
+        m_cleanedConnectionString.append(" user=");
+        m_cleanedConnectionString.append(conn.user());
+        m_cleanedConnectionString.append(" dbname=");
+        m_cleanedConnectionString.append(conn.db());
+    }
+
     return conn;
 }
 
@@ -765,7 +776,7 @@ static Variant HHVM_FUNCTION(pg_connection_pool_stat) {
     {
         Array poolArr;
 
-        String poolName(pool->GetConnectionString().c_str(), CopyString);
+        String poolName(pool->GetCleanedConnectionString().c_str(), CopyString);
 
         poolArr.set(s_connection_string, poolName);
         poolArr.set(s_sweeped_connections, pool->SweepedConnections());
