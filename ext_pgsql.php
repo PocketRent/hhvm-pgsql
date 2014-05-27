@@ -23,6 +23,12 @@ function pg_connect(string $connection_string, int $connection_type = 0): ?resou
 function pg_pconnect(string $connection_string, int $connection_type = 0): ?resource;
 
 <<__Native>>
+function pg_connection_pool_stat(): ?Array;
+
+<<__Native>>
+function pg_connection_pool_sweep_free(): void;
+
+<<__Native>>
 function pg_async_connect(string $connection_string, int $connect_type = 0): ?resource;
 
 <<__Native>>
@@ -180,9 +186,6 @@ function pg_options(resource $connection): ?string;
 
 <<__Native>>
 function pg_parameter_status(resource $connection, string $param_name): mixed;
-
-<<__Native>>
-function pg_pconnect(string $connection_string, int $connect_type = 0): mixed;
 
 <<__Native>>
 function pg_ping(resource $connection): bool;
