@@ -38,22 +38,15 @@ struct ScopeNonBlocking {
 
 class PGSQLConnectionPool;
 
-class PGSQLConnectionPoolContainer {
+static class PGSQLConnectionPoolContainer {
 private:
     std::map<std::string, PGSQLConnectionPool*> m_pools;
     Mutex m_lock;
 
-    PGSQLConnectionPoolContainer();
+
 
 public:
-
-    static PGSQLConnectionPoolContainer& Instance()
-    {
-        // lock?
-        static PGSQLConnectionPoolContainer instance;
-        return instance;
-    }
-
+    PGSQLConnectionPoolContainer();
     PGSQLConnectionPoolContainer(PGSQLConnectionPoolContainer const&);
     void operator=(PGSQLConnectionPoolContainer const&);
 
@@ -62,7 +55,7 @@ public:
     PGSQLConnectionPool& GetPool(const std::string);
     std::vector<PGSQLConnectionPool *> &GetPools();
 
-};
+} s_connectionPoolContainer;
 
 
 
@@ -159,7 +152,7 @@ public:
     std::string m_options;
 
     std::string m_last_notice;
-    void SetupInformations();
+    void SetupInformation();
 };
 
 class PGSQLResult : public SweepableResourceData {
@@ -230,7 +223,7 @@ static void notice_processor(PGSQL *pgsql, const char *message) {
 }
 
 
-void PGSQL::SetupInformations()
+void PGSQL::SetupInformation()
 {
     if (m_conn == nullptr) return;
 
@@ -260,7 +253,7 @@ PGSQL::PGSQL(String conninfo)
     ConnStatusType st = m_conn->status();
     if (m_conn && st == CONNECTION_OK) {
         // Load up the fixed information
-        SetupInformations();
+        SetupInformation();
     } else if (st == CONNECTION_BAD) {
         m_conn->finish();
     }
@@ -275,7 +268,7 @@ PGSQL::PGSQL(PGSQLConnectionPool &connectionPool)
     m_conn = &(connectionPool.GetConnection());
     m_connectionPool = &connectionPool;
 
-    SetupInformations();
+    SetupInformation();
 }
 
 
@@ -591,7 +584,6 @@ void PGSQLConnectionPool::CloseFreeConnections()
 
 PGSQLConnectionPoolContainer::PGSQLConnectionPoolContainer()
     :m_pools() {
-
 }
 
 
@@ -692,7 +684,7 @@ static Variant HHVM_FUNCTION(pg_connect, const String& connection_string, int co
 static Variant HHVM_FUNCTION(pg_pconnect, const String& connection_string, int connect_type /* = 0 */) {
     PGSQL * pgsql = nullptr;
 
-    PGSQLConnectionPool& pool = PGSQLConnectionPoolContainer::Instance().GetPool(connection_string.toCppString());
+    PGSQLConnectionPool& pool = s_connectionPoolContainer.GetPool(connection_string.toCppString());
 
     pgsql = NEWOBJ(PGSQL)(pool);
 
@@ -764,9 +756,9 @@ const StaticString
 
 static Variant HHVM_FUNCTION(pg_connection_pool_stat) {
 
-    PGSQLConnectionPoolContainer& poolContainer = PGSQLConnectionPoolContainer::Instance();
 
-    auto pools = poolContainer.GetPools();
+
+    auto pools = s_connectionPoolContainer.GetPools();
 
     Array arr;
 
@@ -798,9 +790,7 @@ static Variant HHVM_FUNCTION(pg_connection_pool_stat) {
 
 static void HHVM_FUNCTION(pg_connection_pool_sweep_free) {
 
-    PGSQLConnectionPoolContainer& poolContainer = PGSQLConnectionPoolContainer::Instance();
-
-    auto pools = poolContainer.GetPools();
+    auto pools = s_connectionPoolContainer.GetPools();
 
     for (auto pool : pools)
     {
