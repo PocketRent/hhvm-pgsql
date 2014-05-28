@@ -10,6 +10,8 @@ function pg_close(resource $connection): bool;
 
 function pg_connect(string $connection_string, int $connection_type = 0): ?resource;
 
+function pg_pconnect(string $connection_string, int $connection_type = 0): ?resource;
+
 function pg_async_connect(string $connection_string, int $connect_type = 0): ?resource;
 
 function pg_connection_busy(resource $connection): bool;
