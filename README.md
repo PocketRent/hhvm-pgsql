@@ -8,9 +8,7 @@ This extension only requires the `libpq` library distributed with Postgres and H
 
 ### Pre-built versions
 
-We supply pre-built versions of this extension for Debian 7 Wheezy, Debian 8 Jessie and CentOS 6.4.
-These can be found [here](https://beatbox.pocketrent.com/source/pgsql/) and should be renamed to `pgsql.so` before you
-follow the below installation instructions.
+Pre-build versions of this extension are available in the [releases](https://github.com/PocketRent/hhvm-pgsql/tree/releases) branch.
 
 ### Building & Installation
 
