@@ -35,6 +35,75 @@ struct ScopeNonBlocking {
     bool m_mode;
 };
 
+
+class PGSQLConnectionPool;
+
+static class PGSQLConnectionPoolContainer {
+private:
+    std::map<std::string, PGSQLConnectionPool*> m_pools;
+    Mutex m_lock;
+
+
+
+public:
+    PGSQLConnectionPoolContainer();
+    PGSQLConnectionPoolContainer(PGSQLConnectionPoolContainer const&);
+    void operator=(PGSQLConnectionPoolContainer const&);
+
+    ~PGSQLConnectionPoolContainer();
+
+    PGSQLConnectionPool& GetPool(const std::string);
+    std::vector<PGSQLConnectionPool *> &GetPools();
+
+} s_connectionPoolContainer;
+
+
+
+class PGSQLConnectionPool {
+private:
+    int m_maximumConnections;
+    Mutex m_lock;
+    std::string m_connectionString;
+    std::string m_cleanedConnectionString;
+    std::queue<PQ::Connection*> m_availableConnections;
+    std::vector<PQ::Connection*> m_connections;
+
+    long m_sweepedConnections = 0;
+    long m_openedConnections = 0;
+    long m_requestedConnections = 0;
+    long m_releasedConnections = 0;
+    long m_errors = 0;
+
+public:
+
+
+
+    long SweepedConnections() const { return m_sweepedConnections; }
+    long OpenedConnections() const { return m_openedConnections; }
+    long RequestedConnections() const { return m_requestedConnections; }
+    long ReleasedConnections() const { return m_releasedConnections; }
+    long Errors() const { return m_errors; }
+
+    int TotalConnectionsCount() const { return m_connections.size(); }
+    int FreeConnectionsCount() const { return m_availableConnections.size(); }
+
+    PGSQLConnectionPool(std::string connectionString, int maximumConnections = -1);
+    ~PGSQLConnectionPool();
+
+    PQ::Connection& GetConnection();
+    void Release(PQ::Connection& connection);
+
+    std::string GetConnectionString() const { return m_connectionString; }
+    std::string GetCleanedConnectionString() const { return m_cleanedConnectionString; }
+
+    void CloseAllConnections();
+    void CloseFreeConnections();
+    int MaximumConnections() const { return m_maximumConnections; }
+    void SweepConnection(PQ::Connection& connection);
+};
+
+
+
 class PGSQL : public SweepableResourceData {
     DECLARE_RESOURCE_ALLOCATION(PGSQL);
 public:
@@ -49,21 +118,28 @@ public:
 
 public:
     PGSQL(String conninfo);
+    PGSQL(PGSQLConnectionPool& connectionPool);
     ~PGSQL();
+
+    void ReleaseConnection();
 
     static StaticString s_class_name;
     virtual const String& o_getClassNameHook() const { return s_class_name; }
-    virtual bool isResource() const { return (bool)m_conn; }
+    virtual bool isResource() const { return m_conn != nullptr; }
 
-    PQ::Connection &get() { return m_conn; }
+    PQ::Connection &get() { return *m_conn; }
 
     ScopeNonBlocking asNonBlocking() {
-        auto mode = m_conn.isNonBlocking();
-        return ScopeNonBlocking(m_conn, mode);
+        auto mode = m_conn->isNonBlocking();
+        return ScopeNonBlocking(*m_conn, mode);
     }
 
+    bool IsConnectionPooled() const { return m_connectionPool != nullptr; }
+
 private:
-    PQ::Connection m_conn;
+    PQ::Connection* m_conn;
+
+    PGSQLConnectionPool* m_connectionPool = nullptr;
 
 public:
     std::string m_conn_string;
@@ -76,6 +152,7 @@ public:
     std::string m_options;
 
     std::string m_last_notice;
+    void SetupInformation();
 };
 
 class PGSQLResult : public SweepableResourceData {
@@ -123,6 +200,7 @@ private:
 StaticString PGSQL::s_class_name("pgsql connection");
 StaticString PGSQLResult::s_class_name("pgsql result");
 
+
 PGSQL *PGSQL::Get(const Variant& conn_id) {
     if (conn_id.isNull()) {
         return nullptr;
@@ -144,36 +222,82 @@ static void notice_processor(PGSQL *pgsql, const char *message) {
     }
 }
 
+
+void PGSQL::SetupInformation()
+{
+    if (m_conn == nullptr) return;
+
+    m_db = m_conn->db();
+    m_user = m_conn->user();
+    m_pass = m_conn->pass();
+    m_host = m_conn->host();
+    m_port = m_conn->port();
+    m_options = m_conn->options();
+
+    if (!PGSQL::IgnoreNotice) {
+        m_conn->setNoticeProcessor(notice_processor, this);
+    } else {
+        m_conn->setNoticeProcessor<PGSQL>(notice_processor, nullptr);
+    }
+}
+
 PGSQL::PGSQL(String conninfo)
-    : m_conn(conninfo.data()), m_conn_string(conninfo.data()), m_last_notice("") {
+    : m_conn_string(conninfo.data()), m_last_notice("") {
+
+    m_conn = new PQ::Connection(conninfo.data());
 
     if (RuntimeOption::EnableStats && RuntimeOption::EnableSQLStats) {
         ServerStats::Log("sql.conn", 1);
     }
 
-    ConnStatusType st = m_conn.status();
+    ConnStatusType st = m_conn->status();
     if (m_conn && st == CONNECTION_OK) {
         // Load up the fixed information
-        m_db = m_conn.db();
-        m_user = m_conn.user();
-        m_pass = m_conn.pass();
-        m_host = m_conn.host();
-        m_port = m_conn.port();
-        m_options = m_conn.options();
-
-        if (!PGSQL::IgnoreNotice) {
-            m_conn.setNoticeProcessor(notice_processor, this);
-        } else {
-            m_conn.setNoticeProcessor<PGSQL>(notice_processor, nullptr);
-        }
+        SetupInformation();
     } else if (st == CONNECTION_BAD) {
-        m_conn.finish();
+        m_conn->finish();
     }
 
 }
 
-PGSQL::~PGSQL() { m_conn.finish(); }
-void PGSQL::sweep() { m_conn.finish(); }
+
+PGSQL::PGSQL(PGSQLConnectionPool &connectionPool)
+    : m_conn_string(connectionPool.GetConnectionString()),
+      m_last_notice("")
+{
+    m_conn = &(connectionPool.GetConnection());
+    m_connectionPool = &connectionPool;
+
+    SetupInformation();
+}
+
+
+
+PGSQL::~PGSQL() {
+    ReleaseConnection();
+}
+
+void PGSQL::sweep() {
+    ReleaseConnection();
+}
+
+
+void PGSQL::ReleaseConnection()
+{
+    if (m_conn == nullptr) return;
+
+    if (!IsConnectionPooled())
+    {
+        m_conn->finish();        
+    }
+    else
+    {
+        m_connectionPool->Release(*m_conn);
+        m_connectionPool = nullptr;
+        m_conn = nullptr;
+    }
+
+}
 
 PGSQLResult *PGSQLResult::Get(const Variant& result) {
     if (result.isNull()) {
@@ -304,6 +428,210 @@ String PGSQLResult::getFieldVal(int row, int field, const char *fn_name) {
     }
 }
 
+
+//////////////////////////////////////////////////////////////////////////////////
+
+PGSQLConnectionPool::PGSQLConnectionPool(std::string connectionString, int maximumConnections)
+    :m_maximumConnections(maximumConnections),
+     m_connectionString(connectionString),
+     m_availableConnections(),
+     m_connections()
+{
+
+}
+
+
+PGSQLConnectionPool::~PGSQLConnectionPool()
+{
+    CloseAllConnections();
+}
+
+
+PQ::Connection& PGSQLConnectionPool::GetConnection()
+{
+    Lock lock(m_lock);
+
+    // 1) m_availableConnections
+    // 2) newconn, max 1
+
+    m_requestedConnections++;
+
+    while (!m_availableConnections.empty())
+    {
+        PQ::Connection* pconn = m_availableConnections.front();
+        PQ::Connection& conn = *pconn;
+        m_availableConnections.pop();
+
+        ConnStatusType st = conn.status();
+        if (conn && st == CONNECTION_OK)
+        {
+            return conn;
+        }
+        else if (st == CONNECTION_BAD)
+        {
+            SweepConnection(conn);
+
+            conn.finish();
+        };
+    }
+
+    if (RuntimeOption::EnableStats && RuntimeOption::EnableSQLStats) {
+        ServerStats::Log("sql.conn", 1);
+    }
+
+    int maxConnections = MaximumConnections();
+    int connections = m_connections.size();
+
+    if (maxConnections > 0 && connections < maxConnections)
+        raise_error("The connection pool is full, cannot open new connection.");
+
+    PQ::Connection& conn = *(new PQ::Connection(GetConnectionString()));
+
+    ConnStatusType st = conn.status();
+    if (st == CONNECTION_OK)
+    {
+        m_openedConnections++;
+        m_connections.push_back(&conn);
+    }
+    else if (st == CONNECTION_BAD)
+    {
+        m_errors++;
+
+        conn.finish();
+
+        raise_error("Getting connection from pool failed.");
+    }
+
+    if (m_cleanedConnectionString == "")
+    {
+        m_cleanedConnectionString.append("host=");
+        m_cleanedConnectionString.append(conn.host());
+        m_cleanedConnectionString.append(" port=");
+        m_cleanedConnectionString.append(conn.port());
+        m_cleanedConnectionString.append(" user=");
+        m_cleanedConnectionString.append(conn.user());
+        m_cleanedConnectionString.append(" dbname=");
+        m_cleanedConnectionString.append(conn.db());
+    }
+
+    return conn;
+}
+
+void PGSQLConnectionPool::SweepConnection(PQ::Connection& connection)
+{
+    auto p = std::find(m_connections.begin(), m_connections.end(), &connection);
+
+    if (p != m_connections.end())
+        m_connections.erase(p);
+
+    m_sweepedConnections++;
+}
+
+void PGSQLConnectionPool::Release(PQ::Connection& connection)
+{
+    Lock lock(m_lock);
+
+    m_releasedConnections++;
+
+    ConnStatusType st = connection.status();
+    if (connection && st == CONNECTION_OK) {
+
+        m_availableConnections.push(&connection);
+
+    } else if (st == CONNECTION_BAD) {
+
+        connection.finish();
+        SweepConnection(connection);
+
+
+    }
+
+
+}
+
+void PGSQLConnectionPool::CloseAllConnections()
+{
+    Lock lock(m_lock);
+
+    while (!m_availableConnections.empty())
+    {
+        PQ::Connection* pconn = m_availableConnections.front();
+        pconn->finish();
+
+        m_availableConnections.pop();
+    }
+
+    for (PQ::Connection* conn : m_connections)
+        conn->finish();
+
+    m_connections.clear();
+}
+
+
+void PGSQLConnectionPool::CloseFreeConnections()
+{
+    Lock lock(m_lock);
+
+    while (!m_availableConnections.empty())
+    {
+        PQ::Connection* pconn = m_availableConnections.front();
+        pconn->finish();
+
+        m_availableConnections.pop();
+    }
+}
+
+
+PGSQLConnectionPoolContainer::PGSQLConnectionPoolContainer()
+    :m_pools() {
+}
+
+
+PGSQLConnectionPoolContainer::~PGSQLConnectionPoolContainer() {
+    for (auto & any : m_pools) {
+        PGSQLConnectionPool* pool = any.second;
+        pool->CloseAllConnections();
+    }
+}
+
+
+
+PGSQLConnectionPool& PGSQLConnectionPoolContainer::GetPool(const std::string connString)
+{
+    Lock lock(m_lock);
+
+    auto pool = m_pools[connString];
+
+    if (pool == nullptr)
+    {
+        pool = new PGSQLConnectionPool(connString);
+
+        m_pools[connString] = pool;
+    }
+
+    return *pool;
+}
+
+
+
+std::vector<PGSQLConnectionPool*>& PGSQLConnectionPoolContainer::GetPools()
+{
+    Lock lock(m_lock);
+
+    std::vector<PGSQLConnectionPool*>* v = new std::vector<PGSQLConnectionPool*>();
+
+    for (auto it : m_pools)
+    {
+        v->push_back(it.second);
+    }
+
+    return *v;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////
+
+
 // Simple RAII helper to convert an array to a
 // list of C strings to pass to pgsql functions. Needs
 // to be like this because string conversion may-or-may
@@ -318,22 +646,16 @@ public:
         int size = arr.size();
 
         m_strings.reserve(size);
+        m_c_strs.reserve(size);
 
-        for(int i = 0; i < size; i++) {
-            const Variant &param = arr[i];
+        for (ArrayIter iter(arr); iter; ++iter) {
+            const Variant &param = iter.secondRef();
             if (param.isNull()) {
                 m_strings.push_back(null_string);
-            } else {
-                m_strings.push_back(param.toString());
-            }
-        }
-
-        m_c_strs.reserve(size);
-        for (int i = 0; i < size; i++) {
-            if (m_strings[i].isNull()) {
                 m_c_strs.push_back(nullptr);
             } else {
-                m_c_strs.push_back(m_strings[i].data());
+                m_strings.push_back(param.toString());
+                m_c_strs.push_back(param.toString().data());
             }
         }
     }
@@ -358,10 +680,27 @@ static Variant HHVM_FUNCTION(pg_connect, const String& connection_string, int co
     return Resource(pgsql);
 }
 
+
+static Variant HHVM_FUNCTION(pg_pconnect, const String& connection_string, int connect_type /* = 0 */) {
+    PGSQL * pgsql = nullptr;
+
+    PGSQLConnectionPool& pool = s_connectionPoolContainer.GetPool(connection_string.toCppString());
+
+    pgsql = NEWOBJ(PGSQL)(pool);
+
+    if (!pgsql->get()) {
+        delete pgsql;
+        FAIL_RETURN;
+    }
+    return Resource(pgsql);
+}
+
 static bool HHVM_FUNCTION(pg_close, const Resource& connection) {
     PGSQL * pgsql = PGSQL::Get(connection);
     if (pgsql) {
-        pgsql->get().finish();
+
+        pgsql->ReleaseConnection();
+
         return true;
     } else {
         return false;
@@ -400,6 +739,66 @@ static bool HHVM_FUNCTION(pg_connection_reset, const Resource& connection) {
 
     return pgsql->get().status() != CONNECTION_BAD;
 }
+
+
+//////////////////// Connection Pool functions /////////////////////////
+
+
+const StaticString
+    s_connection_string("connection_string"),
+    s_sweeped_connections("sweeped_connections"),
+    s_opened_connections("opened_connections"),
+    s_requested_connections("requested_connections"),
+    s_released_connections("released_connections"),
+    s_errors("errors"),
+    s_total_connections("total_connections"),
+    s_free_connections("free_connections");
+
+static Variant HHVM_FUNCTION(pg_connection_pool_stat) {
+
+
+
+    auto pools = s_connectionPoolContainer.GetPools();
+
+    Array arr;
+
+    int i = 0;
+
+    for (auto pool : pools)
+    {
+        Array poolArr;
+
+        String poolName(pool->GetCleanedConnectionString().c_str(), CopyString);
+
+        poolArr.set(s_connection_string, poolName);
+        poolArr.set(s_sweeped_connections, pool->SweepedConnections());
+        poolArr.set(s_opened_connections, pool->OpenedConnections());
+        poolArr.set(s_requested_connections, pool->RequestedConnections());
+        poolArr.set(s_released_connections, pool->ReleasedConnections());
+        poolArr.set(s_errors, pool->Errors());
+        poolArr.set(s_total_connections, pool->TotalConnectionsCount());
+        poolArr.set(s_free_connections, pool->FreeConnectionsCount());
+
+        arr.set(i, poolArr);
+        i++;
+    }
+
+    return arr;
+}
+
+
+
+static void HHVM_FUNCTION(pg_connection_pool_sweep_free) {
+
+    auto pools = s_connectionPoolContainer.GetPools();
+
+    for (auto pool : pools)
+    {
+        pool->CloseFreeConnections();
+    }
+
+}
+
 
 ///////////// Interrogation Functions ////////////////////
 
@@ -981,6 +1380,9 @@ static Variant HHVM_FUNCTION(pg_fetch_all, const Resource& result) {
     }
 
     int num_rows = res->getNumRows();
+    if (num_rows == 0) {
+        FAIL_RETURN;
+    }
 
     Array rows;
     for (int i = 0; i < num_rows; i++) {
@@ -1250,16 +1652,16 @@ static class pgsqlExtension : public Extension {
 public:
     pgsqlExtension() : Extension("pgsql") {}
 
-    virtual void moduleLoad(Hdf hdf)
+    virtual void moduleLoad(const IniSetting::Map& ini, Hdf hdf)
     {
         Hdf pgsql = hdf["PGSQL"];
 
-        PGSQL::AllowPersistent       = pgsql["AllowPersistent"].getBool(true);
-        PGSQL::MaxPersistent         = pgsql["MaxPersistent"].getInt32(-1);
-        PGSQL::MaxLinks              = pgsql["MaxLinks"].getInt32(-1);
-        PGSQL::AutoResetPersistent   = pgsql["AutoResetPersistent"].getBool();
-        PGSQL::IgnoreNotice          = pgsql["IgnoreNotice"].getBool();
-        PGSQL::LogNotice             = pgsql["LogNotice"].getBool();
+        PGSQL::AllowPersistent     = Config::GetBool(ini, pgsql["AllowPersistent"], true);
+        PGSQL::MaxPersistent       = Config::GetInt32(ini, pgsql["MaxPersistent"], -1);
+        PGSQL::MaxLinks            = Config::GetInt32(ini, pgsql["MaxLinks"], -1);
+        PGSQL::AutoResetPersistent = Config::GetBool(ini, pgsql["AutoResetPersistent"]);
+        PGSQL::IgnoreNotice        = Config::GetBool(ini, pgsql["IgnoreNotice"]);
+        PGSQL::LogNotice           = Config::GetBool(ini, pgsql["LogNotice"]);
 
     }
 
@@ -1270,6 +1672,9 @@ public:
         HHVM_FE(pg_client_encoding);
         HHVM_FE(pg_close);
         HHVM_FE(pg_connect);
+        HHVM_FE(pg_pconnect);
+        HHVM_FE(pg_connection_pool_stat);
+        HHVM_FE(pg_connection_pool_sweep_free);
         HHVM_FE(pg_connection_busy);
         HHVM_FE(pg_connection_reset);
         HHVM_FE(pg_connection_status);

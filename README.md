@@ -8,9 +8,7 @@ This extension only requires the `libpq` library distributed with Postgres and H
 
 ### Pre-built versions
 
-We supply pre-built versions of this extension for Debian 7 Wheezy, Debian 8 Jessie and CentOS 6.4.
-These can be found [here](https://beatbox.pocketrent.com/source/pgsql/) and should be renamed to `pgsql.so` before you
-follow the below installation instructions.
+Pre-build versions of this extension are available in the [releases](https://github.com/PocketRent/hhvm-pgsql/tree/releases) branch.
 
 ### Building & Installation
 
@@ -58,7 +56,6 @@ $ cmake -DHACK_FRIENDLY=ON .
 There are a few differences from the standard Zend implementation.
 
 * The connection resource is not optional.
-* Persistent connections are not implemented
 * The following functions are not implemented for various reasons:
   * `pg_convert`
   * `pg_copy_from`
@@ -76,7 +73,6 @@ There are a few differences from the standard Zend implementation.
   * `pg_lo_unlink`
   * `pg_lo_write`
   * `pg_meta_data`
-  * `pg_pconnect`
   * `pg_put_line`
   * `pg_select`
   * `pg_set_client_encoding`
@@ -85,6 +81,14 @@ There are a few differences from the standard Zend implementation.
   * `pg_tty`
   * `pg_untrace`
   * `pg_update`
+
+There is a connection pool, you can use the `pg_pconnect` function. The $connection_type parameter is
+ignored for both `pg_connect` and `pg_pconnect`. There are a few new function:
+
+* `pg_connection_pool_stat`: It gives some information, eg. count of connections, free connections, etc.
+* `pg_connection_pool_sweep_free`: Closing all unused connection in all pool.
+
+The `pg_pconnect` create a different connection pool for each connection string.
 
 Otherwise, all functionality is (or should be) the same as the Zend implementation.
 
