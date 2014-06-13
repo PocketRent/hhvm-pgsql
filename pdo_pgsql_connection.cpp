@@ -276,7 +276,7 @@ namespace HPHP {
 			// however it does pretty much the same as the zend implementation
 			// and that doesn't seem to provide anything useful either
 			if(this->pgoid == InvalidOid){
-				return empty_string;
+				return empty_string();
 			}
 			return String((long)this->pgoid);
 		} else {
@@ -290,7 +290,7 @@ namespace HPHP {
 				return String(res.getValue(0, 0), CopyString);
 			} else {
 				HANDLE_ERROR(NULL, res);
-				return empty_string;
+				return empty_string();
 			}
 		}
 	}
