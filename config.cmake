@@ -5,8 +5,8 @@ FIND_PATH(PGSQL_INCLUDE_DIR NAMES libpq-fe.h
 FIND_LIBRARY(PGSQL_LIBRARY NAMES pq PATHS /lib /usr/lib /usr/local/lib)
 
 IF (PGSQL_INCLUDE_DIR AND PGSQL_LIBRARY)
-	MESSAGE(STATUS "pgSQL Include dir: ${PGSQL_INCLUDE_DIR}")
-	MESSAGE(STATUS "libpq library: ${PGSQL_LIBRARY}")
+    MESSAGE(STATUS "pgSQL Include dir: ${PGSQL_INCLUDE_DIR}")
+    MESSAGE(STATUS "libpq library: ${PGSQL_LIBRARY}")
 ELSE()
     MESSAGE(FATAL_ERROR "Cannot find libpq library")
 ENDIF()
