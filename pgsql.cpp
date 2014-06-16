@@ -288,7 +288,7 @@ void PGSQL::ReleaseConnection()
 
     if (!IsConnectionPooled())
     {
-        m_conn->finish();        
+        m_conn->finish();
     }
     else
     {
@@ -326,7 +326,7 @@ PGSQLResult::~PGSQLResult() {
 }
 
 void PGSQLResult::sweep() {
-	close();
+    close();
 }
 
 int PGSQLResult::getFieldNumber(const Variant& field) {
@@ -1787,14 +1787,14 @@ public:
         C(CONV_IGNORE_NOT_NULL, 4);
 
 #undef C
-		loadSystemlib();
+        loadSystemlib();
     }
 } s_pgsql_extension;
 
 }
 
 extern "C" Extension *getModule() {
-	return &s_pgsql_extension;
+    return &s_pgsql_extension;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
