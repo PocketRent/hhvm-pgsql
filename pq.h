@@ -12,9 +12,9 @@ class Connection;
 
 class Result {
 public:
-	Result(){
-		m_res = NULL;
-	}
+    Result(){
+        m_res = NULL;
+    }
     Result(const Result&) = delete;
     Result& operator=(const Result&) = delete;
 
@@ -59,11 +59,11 @@ public:
         return atoi(n);
     }
 
-	long lcmdTuples() const {
-		const char * n = PQcmdTuples(m_res);
-		if(n[0] == 0) return 0;
-		return atol(n);
-	}
+    long lcmdTuples() const {
+        const char * n = PQcmdTuples(m_res);
+        if(n[0] == 0) return 0;
+        return atol(n);
+    }
 
     int numTuples() const {
         return PQntuples(m_res);
@@ -105,9 +105,9 @@ public:
         return PQfsize(m_res, column_number);
     }
 
-	unsigned long precision(int column_number) const {
-		return PQfmod(m_res, column_number);
-	}
+    unsigned long precision(int column_number) const {
+        return PQfmod(m_res, column_number);
+    }
 
     Oid table(int column_number) {
         return PQftable(m_res, column_number);
@@ -240,20 +240,20 @@ public:
     }
 
     Result prepare(const char *name, const char *query, int nParams) {
-		return prepare(name, query, nParams, NULL);
-	}
+        return prepare(name, query, nParams, NULL);
+    }
 
-	Result prepare(const char *name, const char *query, int nParams, const Oid *paramTypes) {
-		PGresult *res = PQprepare(m_conn, name, query, nParams, paramTypes);
+    Result prepare(const char *name, const char *query, int nParams, const Oid *paramTypes) {
+        PGresult *res = PQprepare(m_conn, name, query, nParams, paramTypes);
         return Result(res);
     }
 
     Result execPrepared(const char *name, int nParams, const char * const *paramValues) {
-		return execPrepared(name, nParams, paramValues, NULL, NULL);
-	}
+        return execPrepared(name, nParams, paramValues, NULL, NULL);
+    }
 
-	Result execPrepared(const char *name, int nParams, const char * const *paramValues, const int *paramLengths, const int *paramFormats){
-		PGresult *res = PQexecPrepared(m_conn, name, nParams, paramValues, paramLengths, paramFormats, 0);
+    Result execPrepared(const char *name, int nParams, const char * const *paramValues, const int *paramLengths, const int *paramFormats){
+        PGresult *res = PQexecPrepared(m_conn, name, nParams, paramValues, paramLengths, paramFormats, 0);
         return Result(res);
 
     }
