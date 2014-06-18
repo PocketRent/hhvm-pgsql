@@ -4,15 +4,15 @@
 #include "hphp/runtime/ext/pdo_driver.h"
 
 namespace HPHP {
-	class PDOPgSql : public PDODriver {
-	public:
-		PDOPgSql();
+    class PDOPgSql : public PDODriver {
+    public:
+        PDOPgSql();
 
-		virtual PDOConnection* createConnectionObject();
-	};
+        virtual PDOConnection* createConnectionObject();
+    };
 
-	long pdo_attr_lval(const Array& options, int opt, long defaultValue);
+    long pdo_attr_lval(const Array& options, int opt, long defaultValue);
 
-	String pdo_attr_strval(const Array& options, int opt, const char *def);
+    String pdo_attr_strval(const Array& options, int opt, const char *def);
 }
 #endif
