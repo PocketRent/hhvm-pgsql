@@ -33,7 +33,7 @@ static int php_pdo_parse_data_source(const char *data_source,
                      int nparams) {
     int i, j;
     int valstart = -1;
-    int semi = -1;
+    int delim = -1;
     int optstart = 0;
     int nlen;
     int n_matches = 0;
@@ -54,21 +54,21 @@ static int php_pdo_parse_data_source(const char *data_source,
         valstart = ++i;
 
         /* now we're looking for VALUE; or just VALUE<NUL> */
-        semi = -1;
+        delim = -1;
         while (i < data_source_len) {
             if (data_source[i] == '\0') {
-            semi = i++;
+            delim = i++;
             break;
             }
-            if (data_source[i] == ';') {
-            semi = i++;
+            if (data_source[i] == ' ') {
+            delim = i++;
             break;
             }
             ++i;
         }
 
-        if (semi == -1) {
-            semi = i;
+        if (delim == -1) {
+            delim = i;
         }
 
         /* find the entry in the array */
@@ -80,7 +80,7 @@ static int php_pdo_parse_data_source(const char *data_source,
             if (parsed[j].freeme) {
                 free(parsed[j].optval);
             }
-            parsed[j].optval = strndup(data_source + valstart, semi - valstart);
+            parsed[j].optval = strndup(data_source + valstart, delim - valstart);
             parsed[j].freeme = 1;
             ++n_matches;
             break;
