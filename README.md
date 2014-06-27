@@ -4,7 +4,7 @@ This is an implementation of the `pgsql` PHP extension for [HHVM][fb-hphp].
 
 ### Prerequisites
 
-This extension only requires the `libpq` library distributed with Postgres and HipHop VM itself.
+This extension only requires the HipHop VM itself and the `libpq` library distributed with Postgres.
 
 ### Pre-built versions
 
