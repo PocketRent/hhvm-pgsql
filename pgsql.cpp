@@ -206,9 +206,7 @@ PGSQL *PGSQL::Get(const Variant& conn_id) {
         return nullptr;
     }
 
-    PGSQL *pgsql = conn_id.toResource().getTyped<PGSQL>
-        (!RuntimeOption::ThrowBadTypeExceptions,
-         !RuntimeOption::ThrowBadTypeExceptions);
+    PGSQL *pgsql = conn_id.toResource().getTyped<PGSQL>(true, true);
     return pgsql;
 }
 
@@ -304,9 +302,7 @@ PGSQLResult *PGSQLResult::Get(const Variant& result) {
         return nullptr;
     }
 
-    auto *res = result.toResource().getTyped<PGSQLResult>
-        (!RuntimeOption::ThrowBadTypeExceptions,
-         !RuntimeOption::ThrowBadTypeExceptions);
+    auto *res = result.toResource().getTyped<PGSQLResult>(true, true);
     return res;
 }
 
