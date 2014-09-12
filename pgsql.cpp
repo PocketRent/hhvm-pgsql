@@ -1085,7 +1085,7 @@ static bool HHVM_FUNCTION(pg_free_result, const Resource& result) {
 static bool _handle_query_result(const char *fn_name, PQ::Connection &conn, PQ::Result &result) {
     if (!result) {
         const char * err = conn.errorMessage();
-        raise_warning("%s(): Query Failed: %s", fn_name, err);
+        raise_warning("%s(): Query failed: %s", fn_name, err);
         return true;
     } else {
         int st = result.status();
@@ -1097,7 +1097,7 @@ static bool _handle_query_result(const char *fn_name, PQ::Connection &conn, PQ::
             case PGRES_NONFATAL_ERROR:
             case PGRES_FATAL_ERROR:
                 const char * msg = result.errorMessage();
-                raise_warning("%s(): Query Failed: %s", fn_name, msg);
+                raise_warning("%s(): Query failed: %s", fn_name, msg);
                 return true;
         }
         return false;
