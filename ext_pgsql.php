@@ -86,6 +86,10 @@ function pg_fetch_array(resource $result, ?int $row = null, int $result_type = 3
 <<__Native>>
 function pg_fetch_assoc(resource $result, ?int $row = null): ?array<string,mixed>;
 
+function pg_fetch_object(resource $result, ?int $row = null): mixed {
+    return ($return = pg_fetch_assoc($result, $row)) ? (object) $return : $return;
+}
+
 <<__Native>>
 function pg_fetch_result(resource $result, ?int $row = null, mixed $field = null): mixed;
 
