@@ -1164,6 +1164,9 @@ static Variant HHVM_FUNCTION(pg_execute, const Resource& connection, const Strin
     CStringArray str_array(params);
 
     PQ::Result res = conn->get().execPrepared(stmtname.data(), params.size(), str_array.data());
+    if (_handle_query_result("pg_execute", conn->get(), res)) {
+        FAIL_RETURN;
+    }
 
     PGSQLResult *pgres = newres<PGSQLResult>(conn, std::move(res));
 
