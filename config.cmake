@@ -9,8 +9,8 @@ endif()
 
 include_directories(${PGSQL_INCLUDE_DIR})
 
-HHVM_EXTENSION(pgsql pgsql.cpp)
-HHVM_SYSTEMLIB(pgsql ext_pgsql.php)
+HHVM_EXTENSION(pgsql src/pgsql.cpp)
+HHVM_SYSTEMLIB(pgsql src/ext_pgsql.php)
 
 target_link_libraries(pgsql ${PostgreSQL_LIBRARIES})
 
