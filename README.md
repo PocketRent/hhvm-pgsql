@@ -96,3 +96,19 @@ As always, bugs should be reported to the issue tracker and patches are very wel
 
 [fb-hphp]: https://github.com/facebook/hhvm "HHVM"
 [fb-wiki]: https://github.com/facebook/hhvm/wiki "HHVM Wiki"
+
+### Running the tests
+
+In order to run the test suite you just have to call the `test.sh` file. There
+are three different ways to call this script:
+
+~~~
+$ ./test.sh
+$ ./test.sh ExecuteTest
+$ ./test.sh ExecuteTest#testNotPrepared
+~~~
+
+The first command will run the whole test suite. The second command will just
+execute the tests under the `ExecuteTest` class. The third command will execute
+the test named `testNotPrepared` that is inside the `ExecuteTest` class.
+
