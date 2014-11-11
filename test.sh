@@ -11,5 +11,5 @@ if [ -z "${HHVM}" ]; then
 fi
 
 # And finally execute the test suite.
-${HHVM} -vDynamicExtensions.0=${DIR}/pgsql.so ${DIR}/tests/runner.php
+${HHVM} -vDynamicExtensions.0=${DIR}/pgsql.so ${DIR}/tests/runner.php "$1"
 

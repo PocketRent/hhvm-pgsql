@@ -17,7 +17,7 @@ if ($handle = opendir($dir)) {
 			$class = preg_replace('/\.php$/', '', $entry);
 			require_once "$dir/$entry";
 
-			$obj = new $class();
+			$obj = new $class($argv[1]);
 			$obj->run();
 			$fails += $obj->fails;
 			$ok += $obj->total - $obj->fails;
