@@ -30,11 +30,11 @@ class ExecuteTest extends Test
 	public function testNormal()
 	{
 		$ret = pg_prepare($this->connection, 'query', 'SELECT * from test');
-		$this->assert($ret);
+		$this->fails($ret === false);
 
 		// This execution should be successful.
 		$ret = pg_execute($this->connection, 'query', []);
-		$this->fails($ret === null);
+		$this->fails($ret === false);
 	}
 }
 
