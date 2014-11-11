@@ -10,7 +10,7 @@ class ExecuteTest extends Test
 
 		$msg = pg_last_error($this->connection);
 		$expected = 'ERROR:  prepared statement "query" does not exist';
-		$this->assertExactly($msg, $expected);
+		$this->assert($msg === $expected);
 	}
 
 	public function testNoConnection()
@@ -21,7 +21,7 @@ class ExecuteTest extends Test
 		// Fails because the given connection is not valid.
 		pg_close($this->connection);
 		$ret = @pg_execute($this->connection, 'query', ['data']);
-		$this->assertExactly($ret, false);
+		$this->assert($ret === false);
 
 		// Tell the `after` method that the connection has already been closed.
 		$this->connection = null;

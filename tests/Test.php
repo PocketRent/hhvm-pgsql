@@ -97,21 +97,6 @@ abstract class Test
 		$this->assert(!$cond);
 	}
 
-	protected function assertEqual($a, $b)
-	{
-		$this->assert($a == $b);
-	}
-
-	protected function assertExactly($a, $b)
-	{
-		$this->assert($a === $b);
-	}
-
-	protected function assertNotEqual($a, $b)
-	{
-		$this->assert($a != $b);
-	}
-
 	private function startsWith($name, $prefix)
 	{
 		return $prefix === '' || strpos($name, $prefix) === 0;
