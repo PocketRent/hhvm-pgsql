@@ -4,7 +4,7 @@
 DIR="$( cd "$( dirname "$0" )" && pwd )"
 HHVM=`which hhvm 2>/dev/null`
 
-# Check that HHVM & PHPUnit could be found.
+# Check that HHVM could be found.
 if [ -z "${HHVM}" ]; then
     echo -e "\x1b[31;1mCould not locate HHVM!\x1b[0m"
     exit 1
