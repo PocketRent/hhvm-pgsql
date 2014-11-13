@@ -37,6 +37,51 @@ DynamicExtensions {
 Where `/path/to/hhvm/extensions` is a folder containing all HipHop extensions, and `pgsql.so` is in
 it. This will cause the extension to be loaded when the virtual machine starts up.
 
+### PostgreSQL types
+
+By default, all the data retrieved by pg\_fetch\_\* functions are strings. This
+is the same behavior as in the standard Zend implementation. However, you can
+change this by setting the `RespectTypes` option.
+
+~~~
+PGSQL {
+  RespectTypes = false
+}
+~~~
+
+If you set this option to true, then the type of each column will be an
+equivalent of the original PostgreSQL type. So, for example:
+
+```php
+// The connection has already been established.
+
+pg_prepare($connection, 'query', 'SELECT * FROM example');
+$ret = pg_execute($connection, 'query', []);
+$row = pg_fetch_assoc($ret);
+var_dump($row);
+
+// => It outputs the following:
+//
+// array(3) {
+//   ["id"]=>
+//   int(1)
+//   ["name"]=>
+//   string(13) "A test string"
+//   ["valid"]=>
+//   bool(true)
+// }
+```
+
+The supported types are the following:
+
+| PostgreSQL                     | PHP    |
+|--------------------------------|--------|
+| boolean                        | bool   |
+| smallint, integer, bigint      | int    |
+| decimal, numeric               | string |
+| real, double precision         | float  |
+| smallserial, serial, bigserial | int    |
+
 ### Hack Friendly Mode
 
 If you are using Hack, then you can use the provided `pgsql.hhi` file to type the functions. There

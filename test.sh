@@ -10,6 +10,20 @@ if [ -z "${HHVM}" ]; then
     exit 1
 fi
 
+# Create the needed tables with some test values. The `hhvm-pgsql`
+# database has to exist already.
+psql hhvm-pgsql < tests/test.sql
+
 # And finally execute the test suite.
-${HHVM} -vDynamicExtensions.0=${DIR}/pgsql.so ${DIR}/tests/runner.php "$1"
+${HHVM} \
+    -vDynamicExtensions.0=${DIR}/pgsql.so   \
+    ${DIR}/tests/runner.php "$1"
+if [ $? -ne 0 ]; then
+    exit 1
+fi
+
+${HHVM} \
+    -vDynamicExtensions.0=${DIR}/pgsql.so   \
+    -c ${DIR}/tests/respect.hdf             \
+    ${DIR}/tests/runner.php "$1" respect
 

@@ -64,12 +64,18 @@ abstract class Test
 	public $specific;
 
 	/**
+	 * @var string: true if only the tests that require the `RespectTypes`
+	 * option have to be run.
+	 */
+	public $respect;
+
+	/**
 	 * Constructor. It should be subclassed only if you want to set the
 	 * $this->db attribute manually.
 	 *
 	 * @param string $specific The filter to be applied.
 	 */
-	public function __construct($specific)
+	public function __construct($specific, $respect)
 	{
 		$this->total = 0;
 		$this->ok = 0;
@@ -77,6 +83,7 @@ abstract class Test
 		$this->localFails = 0;
 		$this->db = true;
 		$this->specific = $specific;
+		$this->respect = $respect;
 	}
 
 	/**
@@ -124,19 +131,24 @@ abstract class Test
 		}
 
 		// And finally run all the available methods.
-		foreach($methods as $method) {
+		foreach($methods as $m) {
 			$this->localFails = 0;
-			if ($this->startsWith($method, 'test')) {
-				$name = $klass . '#' . $method;
+			if ($this->startsWith($m, 'test')) {
+				$name = $klass . '#' . $m;
+
+				// Check the `RespectTypes` option.
+				if ($this->respect !== $this->startsWith($m, 'testRespect')) {
+					continue;
+				}
 
 				// Execute it.
 				$this->before();
-				if (method_exists($this, $method)) {
-					call_user_func_array([$this, $method], []);
+				if (method_exists($this, $m)) {
+					call_user_func_array([$this, $m], []);
 					$this->after();
 				} else {
 					$this->after();
-					$msg = "\x1b[31;1mMethod $klass#$method does not";
+					$msg = "\x1b[31;1mMethod $klass#$m does not";
 					$msg .= " exist\x1b[0m\n";
 					print_r($msg);
 					continue;
