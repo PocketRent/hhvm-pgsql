@@ -6,6 +6,8 @@
 #include "pq.h"
 #undef PACKAGE_VERSION // pg_config defines it
 #include "pg_config.h" // needed for PG_VERSION
+#include <iostream>
+#include <exception>
 
 #define HANDLE_ERROR(stmt, res) handleError(stmt, sqlstate(res), res.errorMessage())
 
@@ -60,7 +62,7 @@ static int php_pdo_parse_data_source(const char *data_source,
             delim = i++;
             break;
             }
-            if (data_source[i] == ' ') {
+            if (data_source[i] == ';') {
             delim = i++;
             break;
             }
@@ -116,8 +118,6 @@ namespace HPHP {
         { "dbname", "", 0 },
         };
         php_pdo_parse_data_source(data_source.data(), data_source.size(), vars, 3);
-
-
 
         std::stringstream conninfo;
         conninfo << "host='";
