@@ -55,8 +55,7 @@ equivalent of the original PostgreSQL type. So, for example:
 ```php
 // The connection has already been established.
 
-pg_prepare($connection, 'query', 'SELECT * FROM example');
-$ret = pg_execute($connection, 'query', []);
+$ret = pg_query($connection, 'SELECT * FROM example');
 $row = pg_fetch_assoc($ret);
 var_dump($row);
 
@@ -72,7 +71,8 @@ var_dump($row);
 // }
 ```
 
-The supported types are the following:
+The supported types are the following (the types not listed below will be
+converted to strings):
 
 | PostgreSQL                     | PHP    |
 |--------------------------------|--------|
