@@ -5,7 +5,7 @@
 
 #include "hphp/runtime/base/runtime-option.h"
 #include "hphp/runtime/server/server-stats.h"
-#include "hphp/runtime/ext/ext_string.h"
+#include "hphp/runtime/ext/string/ext_string.h"
 
 #define PGSQL_ASSOC 1
 #define PGSQL_NUM 2
