@@ -25,184 +25,184 @@
  */
 abstract class Test
 {
-	/**
-	 * @var int: the total number of asserts that have been run so far.
-	 */
-	public $total;
+  /**
+   * @var int: the total number of asserts that have been run so far.
+   */
+  public $total;
 
-	/**
-	 * @var int: the number of asserts with a positive result.
-	 */
-	public $ok;
+  /**
+   * @var int: the number of asserts with a positive result.
+   */
+  public $ok;
 
-	/**
-	 * @var int: the number of asserts with a negative result.
-	 */
-	public $fails;
+  /**
+   * @var int: the number of asserts with a negative result.
+   */
+  public $fails;
 
-	/**
-	 * @var int: the number of failures of the last test.
-	 */
-	public $localFails;
+  /**
+   * @var int: the number of failures of the last test.
+   */
+  public $localFails;
 
-	/**
-	 * @var resource: a database connection that will be established before a
-	 * test has to run and that will be closed after a test has run.
-	 */
-	protected $connection;
+  /**
+   * @var resource: a database connection that will be established before a
+   * test has to run and that will be closed after a test has run.
+   */
+  protected $connection;
 
-	/**
-	 * @var bool: whether the $connection mechanism has to be established or
-	 * not. It defaults to true. You should change it by overriding the
-	 * constructor and setting it to false manually.
-	 */
-	protected $db;
+  /**
+   * @var bool: whether the $connection mechanism has to be established or
+   * not. It defaults to true. You should change it by overriding the
+   * constructor and setting it to false manually.
+   */
+  protected $db;
 
-	/**
-	 * @var string: he filter as given by the `runner.php` file.
-	 */
-	public $specific;
+  /**
+   * @var string: he filter as given by the `runner.php` file.
+   */
+  public $specific;
 
-	/**
-	 * @var string: true if only the tests that require the `RespectTypes`
-	 * option have to be run.
-	 */
-	public $respect;
+  /**
+   * @var string: true if only the tests that require the `RespectTypes`
+   * option have to be run.
+   */
+  public $respect;
 
-	/**
-	 * Constructor. It should be subclassed only if you want to set the
-	 * $this->db attribute manually.
-	 *
-	 * @param string $specific The filter to be applied.
-	 */
-	public function __construct($specific, $respect)
-	{
-		$this->total = 0;
-		$this->ok = 0;
-		$this->fails = 0;
-		$this->localFails = 0;
-		$this->db = true;
-		$this->specific = $specific;
-		$this->respect = $respect;
-	}
+  /**
+   * Constructor. It should be subclassed only if you want to set the
+   * $this->db attribute manually.
+   *
+   * @param string $specific The filter to be applied.
+   */
+  public function __construct($specific, $respect)
+  {
+    $this->total = 0;
+    $this->ok = 0;
+    $this->fails = 0;
+    $this->localFails = 0;
+    $this->db = true;
+    $this->specific = $specific;
+    $this->respect = $respect;
+  }
 
-	/**
-	 * Hook that will be called before each test. By default it establishes the
-	 * $this->connection.
-	 */
-	protected function before()
-	{
-		if ($this->db) {
-			$this->connection = pg_connect("dbname=hhvm-pgsql");
-			if ($this->connection === false) {
-				die("Could not connect with the DB!\n");
-			}
-		}
-	}
+  /**
+   * Hook that will be called before each test. By default it establishes the
+   * $this->connection.
+   */
+  protected function before()
+  {
+    if ($this->db) {
+      $this->connection = pg_connect("dbname=hhvm-pgsql");
+      if ($this->connection === false) {
+        die("Could not connect with the DB!\n");
+      }
+    }
+  }
 
-	/**
-	 * Hook that will be called after each test. By default it closes the
-	 * $this->connection that was established in the `before` function.
-	 */
-	protected function after()
-	{
-		if ($this->db && !is_null($this->connection)) {
-			pg_close($this->connection);
-		}
-	}
+  /**
+   * Hook that will be called after each test. By default it closes the
+   * $this->connection that was established in the `before` function.
+   */
+  protected function after()
+  {
+    if ($this->db && !is_null($this->connection)) {
+      pg_close($this->connection);
+    }
+  }
 
-	/**
-	 * Run all the tests for this class.
-	 */
-	public final function run()
-	{
-		$klass = get_class($this);
-		$methods = get_class_methods($this);
+  /**
+   * Run all the tests for this class.
+   */
+  public final function run()
+  {
+    $klass = get_class($this);
+    $methods = get_class_methods($this);
 
-		// Check if we have to pick a specific class-method.
-		if ($this->specific !== '') {
-			$parts = explode('#', $this->specific, 2);
-			if ($parts[0] !== $klass) {
-				return;
-			}
-			if (count($parts) > 1) {
-				$methods = [$parts[1]];
-			}
-		}
+    // Check if we have to pick a specific class-method.
+    if ($this->specific !== '') {
+      $parts = explode('#', $this->specific, 2);
+      if ($parts[0] !== $klass) {
+        return;
+      }
+      if (count($parts) > 1) {
+        $methods = [$parts[1]];
+      }
+    }
 
-		// And finally run all the available methods.
-		foreach($methods as $m) {
-			$this->localFails = 0;
-			if ($this->startsWith($m, 'test')) {
-				$name = $klass . '#' . $m;
+    // And finally run all the available methods.
+    foreach($methods as $m) {
+      $this->localFails = 0;
+      if ($this->startsWith($m, 'test')) {
+        $name = $klass . '#' . $m;
 
-				// Check the `RespectTypes` option.
-				if ($this->respect !== $this->startsWith($m, 'testRespect')) {
-					continue;
-				}
+        // Check the `RespectTypes` option.
+        if ($this->respect !== $this->startsWith($m, 'testRespect')) {
+          continue;
+        }
 
-				// Execute it.
-				$this->before();
-				if (method_exists($this, $m)) {
-					call_user_func_array([$this, $m], []);
-					$this->after();
-				} else {
-					$this->after();
-					$msg = "\x1b[31;1mMethod $klass#$m does not";
-					$msg .= " exist\x1b[0m\n";
-					print_r($msg);
-					continue;
-				}
+        // Execute it.
+        $this->before();
+        if (method_exists($this, $m)) {
+          call_user_func_array([$this, $m], []);
+          $this->after();
+        } else {
+          $this->after();
+          $msg = "\x1b[31;1mMethod $klass#$m does not";
+          $msg .= " exist\x1b[0m\n";
+          print_r($msg);
+          continue;
+        }
 
-				// Print the results.
-				if ($this->localFails > 0) {
-					$str = 'assert';
-					if ($this->localFails > 1) {
-						$str .= 's';
-					}
-					$str = "({$this->localFails}/{$this->total} $str)";
-					print_r("\x1b[31mFail: $name $str\033[0m\n");
-				} else {
-					print_r("\x1b[32mOK: $name\033[0m\n");
-				}
+        // Print the results.
+        if ($this->localFails > 0) {
+          $str = 'assert';
+          if ($this->localFails > 1) {
+            $str .= 's';
+          }
+          $str = "({$this->localFails}/{$this->total} $str)";
+          print_r("\x1b[31mFail: $name $str\033[0m\n");
+        } else {
+          print_r("\x1b[32mOK: $name\033[0m\n");
+        }
 
-			}
-		}
-	}
+      }
+    }
+  }
 
-	/**
-	 * Assert that the given condition has to be true.
-	 *
-	 * @param bool $cond The given condition.
-	 */
-	protected function assert($cond)
-	{
-		$this->total++;
-		if (!$cond) {
-			$this->localFails++;
-			$this->fails++;
-		}
-	}
+  /**
+   * Assert that the given condition has to be true.
+   *
+   * @param bool $cond The given condition.
+   */
+  protected function assert($cond)
+  {
+    $this->total++;
+    if (!$cond) {
+      $this->localFails++;
+      $this->fails++;
+    }
+  }
 
-	/**
-	 * Assert that the given condition has to be false.
-	 *
-	 * @param bool $cond The given condition.
-	 */
-	protected function fails($cond)
-	{
-		$this->assert(!$cond);
-	}
+  /**
+   * Assert that the given condition has to be false.
+   *
+   * @param bool $cond The given condition.
+   */
+  protected function fails($cond)
+  {
+    $this->assert(!$cond);
+  }
 
-	/**
-	 * Get whether the given $name starts with the given $prefix.
-	 *
-	 * @param string $name The name to be matched.
-	 * @param string $prefix The string that has to prefix the given $name.
-	 * @return bool.
-	 */
-	private function startsWith($name, $prefix)
-	{
-		return $prefix === '' || strpos($name, $prefix) === 0;
-	}
+  /**
+   * Get whether the given $name starts with the given $prefix.
+   *
+   * @param string $name The name to be matched.
+   * @param string $prefix The string that has to prefix the given $name.
+   * @return bool.
+   */
+  private function startsWith($name, $prefix)
+  {
+    return $prefix === '' || strpos($name, $prefix) === 0;
+  }
 }

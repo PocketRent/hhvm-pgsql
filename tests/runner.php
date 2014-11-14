@@ -8,29 +8,29 @@ $fails = 0;
 
 function endsWith($str, $prefix)
 {
-	return substr($str, -strlen($prefix)) === $prefix;
+  return substr($str, -strlen($prefix)) === $prefix;
 }
 
 // Iterates over the `tests` directory, loading all the files except for this
 // runner and the `Test` class. Each file contains just one class, with all
 // the tests inside it.
 if ($handle = opendir($dir)) {
-	while (false !== ($entry = readdir($handle))) {
-		if (!is_dir($entry) &&
-				endsWith($entry, '.php') &&
-				$entry !== 'runner.php' &&
-				$entry !== 'Test.php') {
+  while (false !== ($entry = readdir($handle))) {
+    if (!is_dir($entry) &&
+      endsWith($entry, '.php') &&
+      $entry !== 'runner.php' &&
+      $entry !== 'Test.php') {
 
-			$class = preg_replace('/\.php$/', '', $entry);
-			require_once "$dir/$entry";
+      $class = preg_replace('/\.php$/', '', $entry);
+      require_once "$dir/$entry";
 
-			$obj = new $class($argv[1], isset($argv[2]));
-			$obj->run();
-			$fails += $obj->fails;
-			$ok += $obj->total - $obj->fails;
-		}
-	}
-	closedir($handle);
+      $obj = new $class($argv[1], isset($argv[2]));
+      $obj->run();
+      $fails += $obj->fails;
+      $ok += $obj->total - $obj->fails;
+    }
+  }
+  closedir($handle);
 }
 
 // And finally print the results and exit with the proper status code.
