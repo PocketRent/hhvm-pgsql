@@ -1,6 +1,6 @@
 # Find include directory
 FIND_PATH(PGSQL_INCLUDE_DIR NAMES libpq-fe.h
-    PATHS /usr/include /usr/include/postgresql /usr/local/include /usr/local/include/postgresql)
+    PATHS /usr/include /usr/include/postgresql /usr/local/include /usr/local/include/postgresql /usr/include/pgsql/)
 
 FIND_LIBRARY(PGSQL_LIBRARY NAMES pq PATHS /lib /usr/lib /usr/local/lib)
 
