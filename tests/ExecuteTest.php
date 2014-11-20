@@ -46,6 +46,8 @@ class ExecuteTest extends Test
     // This execution fails: boolean converted to empty string.
     $ret = @pg_execute($this->connection, 'query', [1, false]);
     $this->assert($ret === false);
+    $msg = 'ERROR:  invalid input syntax for type boolean: ""';
+    $this->assert(pg_last_error($this->connection) === $msg);
   }
 
   public function testRespectTypes()
