@@ -693,8 +693,15 @@ public:
                 m_strings.push_back(null_string);
                 m_c_strs.push_back(nullptr);
             } else {
-                m_strings.push_back(param.toString());
-                m_c_strs.push_back(param.toString().data());
+                String str;
+                if (PGSQL::RespectTypes && param.isBoolean()) {
+                    str = (param.asBooleanVal()) ? "t" : "f";
+                } else {
+                    str = param.toString();
+                }
+
+                m_strings.push_back(str);
+                m_c_strs.push_back(str.data());
             }
         }
     }

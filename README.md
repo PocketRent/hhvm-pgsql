@@ -82,6 +82,25 @@ converted to strings):
 | real, double precision         | float  |
 | smallserial, serial, bigserial | int    |
 
+Moreover, this also works when inserting/updating rows. A common pitfall is
+doing the following:
+
+```php
+// The connection has already been established.
+
+pg_prepare($connection, 'query', 'INSERT INTO test(id, valid) VALUES($1, $2)');
+$res = pg_execute($connection, 'query', [1, false]);
+var_dump($res); // => outputs: bool(false)
+```
+
+The previous example fails because converting `false` into a string results to
+an empty string, which is not a valid boolean format in PostgreSQL. As
+explained [here](https://bugs.php.net/bug.php?id=44791), this is the proper
+behavior. However, this is not what we want if `RespectTypes = true`. If this
+option is set to true, then the boolean value will be converted as expected by
+PostgreSQL. Therefore, the previous example executes successfully with this
+option set to true.
+
 ### Hack Friendly Mode
 
 If you are using Hack, then you can use the provided `pgsql.hhi` file to type the functions. There
