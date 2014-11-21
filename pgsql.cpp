@@ -5,7 +5,7 @@
 
 #include "hphp/runtime/base/runtime-option.h"
 #include "hphp/runtime/server/server-stats.h"
-#include "hphp/runtime/ext/ext_string.h"
+#include "hphp/runtime/ext/string/ext_string.h"
 
 #define PGSQL_ASSOC 1
 #define PGSQL_NUM 2
@@ -105,7 +105,7 @@ public:
 
 
 class PGSQL : public SweepableResourceData {
-    DECLARE_RESOURCE_ALLOCATION(PGSQL);
+    DECLARE_RESOURCE_ALLOCATION(PGSQL)
 public:
     static bool AllowPersistent;
     static int MaxPersistent;
@@ -156,7 +156,7 @@ public:
 };
 
 class PGSQLResult : public SweepableResourceData {
-    DECLARE_RESOURCE_ALLOCATION(PGSQLResult);
+    DECLARE_RESOURCE_ALLOCATION(PGSQLResult)
 public:
     static PGSQLResult *Get(const Variant& result);
 public:
@@ -671,7 +671,7 @@ public:
 static Variant HHVM_FUNCTION(pg_connect, const String& connection_string, int connect_type /* = 0 */) {
     PGSQL * pgsql = nullptr;
 
-    pgsql = NEWOBJ(PGSQL)(connection_string);
+    pgsql = newres<PGSQL>(connection_string);
 
     if (!pgsql->get()) {
         delete pgsql;
@@ -686,7 +686,7 @@ static Variant HHVM_FUNCTION(pg_pconnect, const String& connection_string, int c
 
     PGSQLConnectionPool& pool = s_connectionPoolContainer.GetPool(connection_string.toCppString());
 
-    pgsql = NEWOBJ(PGSQL)(pool);
+    pgsql = newres<PGSQL>(pool);
 
     if (!pgsql->get()) {
         delete pgsql;
@@ -1120,7 +1120,7 @@ static Variant HHVM_FUNCTION(pg_query, const Resource& connection, const String&
     if (_handle_query_result("pg_query", conn->get(), res))
         FAIL_RETURN;
 
-    PGSQLResult *pgresult = NEWOBJ(PGSQLResult)(conn, std::move(res));
+    PGSQLResult *pgresult = newres<PGSQLResult>(conn, std::move(res));
 
     return Resource(pgresult);
 }
@@ -1138,7 +1138,7 @@ static Variant HHVM_FUNCTION(pg_query_params, const Resource& connection, const 
     if (_handle_query_result("pg_query_params", conn->get(), res))
         FAIL_RETURN;
 
-    PGSQLResult *pgresult = NEWOBJ(PGSQLResult)(conn, std::move(res));
+    PGSQLResult *pgresult = newres<PGSQLResult>(conn, std::move(res));
 
     return Resource(pgresult);
 }
@@ -1154,7 +1154,7 @@ static Variant HHVM_FUNCTION(pg_prepare, const Resource& connection, const Strin
     if (_handle_query_result("pg_prepare", conn->get(), res))
         FAIL_RETURN;
 
-    PGSQLResult *pgres = NEWOBJ(PGSQLResult)(conn, std::move(res));
+    PGSQLResult *pgres = newres<PGSQLResult>(conn, std::move(res));
 
     return Resource(pgres);
 }
@@ -1169,7 +1169,7 @@ static Variant HHVM_FUNCTION(pg_execute, const Resource& connection, const Strin
 
     PQ::Result res = conn->get().execPrepared(stmtname.data(), params.size(), str_array.data());
 
-    PGSQLResult *pgres = NEWOBJ(PGSQLResult)(conn, std::move(res));
+    PGSQLResult *pgres = newres<PGSQLResult>(conn, std::move(res));
 
     return Resource(pgres);
 }
@@ -1223,7 +1223,7 @@ static Variant HHVM_FUNCTION(pg_get_result, const Resource& connection) {
         FAIL_RETURN;
     }
 
-    PGSQLResult *pgresult = NEWOBJ(PGSQLResult)(conn, std::move(res));
+    PGSQLResult *pgresult = newres<PGSQLResult>(conn, std::move(res));
 
     return Resource(pgresult);
 }

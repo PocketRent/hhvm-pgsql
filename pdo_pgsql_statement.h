@@ -18,7 +18,7 @@ namespace HPHP {
     class PDOPgSqlStatement : public PDOStatement {
         friend class PDOPgSqlConnection;
     public:
-        DECLARE_RESOURCE_ALLOCATION(PDOPgSqlStatement);
+        DECLARE_RESOURCE_ALLOCATION(PDOPgSqlStatement)
         PDOPgSqlStatement(PDOPgSqlConnection* m_pdoconn, PQ::Connection* pq);
         virtual ~PDOPgSqlStatement();
 
