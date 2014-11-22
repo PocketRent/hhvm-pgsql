@@ -3,32 +3,50 @@
 
 namespace HPHP {
 
-    // Initialize the extension
-    static PDOPgSql s_pgsql_driver;
+// Initialize the extension
+static PDOPgSql s_pgsql_driver;
 
-    IMPLEMENT_DEFAULT_EXTENSION_VERSION(pdo_pgsql, 1.0.2);
+PDOPgSql::PDOPgSql() : PDODriver("pgsql") {
+}
 
-    PDOPgSql::PDOPgSql() : PDODriver("pgsql") {
+PDOConnection *PDOPgSql::createConnectionObject() {
+    return new PDOPgSqlConnection();
+}
+
+long pdo_attr_lval(const Array& options, int opt, long defaultValue){
+    if(options.exists(opt)){
+        return options[opt].toInt64();
     }
+    return defaultValue;
+}
 
-    PDOConnection *PDOPgSql::createConnectionObject() {
-        return new PDOPgSqlConnection();
+String pdo_attr_strval(const Array& options, int opt, const char *def){
+    if(options.exists(opt)){
+        return options[opt].toString();
     }
+    if(def){
+        return def;
+    }
+    return String();
+}
 
-    long pdo_attr_lval(const Array& options, int opt, long defaultValue){
-        if(options.exists(opt)){
-            return options[opt].toInt64();
-        }
-        return defaultValue;
-    }
+const StaticString s_PDO("PDO");
 
-    String pdo_attr_strval(const Array& options, int opt, const char *def){
-        if(options.exists(opt)){
-            return options[opt].toString();
-        }
-        if(def){
-            return def;
-        }
-        return String();
+static class PDOPGSQLExtension : public Extension {
+  public:
+    PDOPGSQLExtension() : Extension("pdo_pgsql") {}
+
+    virtual void moduleLoad(const IniSetting::Map& ini, Hdf hdf) {
+        Native::registerClassConstant<KindOfInt64>(
+            s_PDO.get(),
+            s_PGSQL_ATTR_DISABLE_NATIVE_PREPARED_STATEMENT.get(),
+            PDO_PGSQL_ATTR_DISABLE_NATIVE_PREPARED_STATEMENT
+        );
+        Native::registerClassConstant<KindOfInt64>(
+            s_PDO.get(),
+            s_PGSQL_ATTR_DISABLE_PREPARES.get(),
+            PDO_PGSQL_ATTR_DISABLE_PREPARES
+        );
     }
+} s_pdopgsql_extension;
 }
