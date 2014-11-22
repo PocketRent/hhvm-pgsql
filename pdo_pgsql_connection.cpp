@@ -56,13 +56,11 @@ static int php_pdo_parse_data_source(const char *data_source,
         /* now we're looking for VALUE; or just VALUE<NUL> */
         delim = -1;
         while (i < data_source_len) {
-            if (data_source[i] == '\0') {
-            delim = i++;
-            break;
-            }
-            if (data_source[i] == ' ') {
-            delim = i++;
-            break;
+            if (data_source[i] == '\0' ||
+                data_source[i] == ' ' ||
+                data_source[i] == ';') {
+                delim = i++;
+                break;
             }
             ++i;
         }
@@ -114,8 +112,10 @@ namespace HPHP {
         { "host", "localhost", 0 },
         { "port", "5432", 0 },
         { "dbname", "", 0 },
+        { "user", nullptr, 0 },
+        { "password", nullptr, 0 }
         };
-        php_pdo_parse_data_source(data_source.data(), data_source.size(), vars, 3);
+        php_pdo_parse_data_source(data_source.data(), data_source.size(), vars, 5);
 
 
 
@@ -133,11 +133,11 @@ namespace HPHP {
         ReplaceStringInPlace(dbname, "\\", "\\\\");
         ReplaceStringInPlace(dbname, "'", "\\'");
         conninfo << dbname << "' password='";
-        std::string password(this->password);
+        std::string password(vars[4].optval ? vars[4].optval : this->password);
         ReplaceStringInPlace(password, "\\", "\\\\");
         ReplaceStringInPlace(password, "'", "\\'");
         conninfo << password << "' user='";
-        std::string username(this->username);
+        std::string username(vars[3].optval ? vars[3].optval : this->username);
         ReplaceStringInPlace(username, "\\", "\\\\");
         ReplaceStringInPlace(username, "'", "\\'");
         conninfo << username << "'";
@@ -391,7 +391,7 @@ namespace HPHP {
     }
 
     bool PDOPgSqlConnection::preparer(const String& sql, sp_PDOStatement* stmt, const Variant &options){
-        PDOPgSqlStatement* s = NEWOBJ(PDOPgSqlStatement)(this, m_conn);
+        PDOPgSqlStatement* s = newres<PDOPgSqlStatement>(this, m_conn);
         *stmt = s;
 
         if(s->create(sql, options.toArray())){

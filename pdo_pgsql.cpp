@@ -6,6 +6,8 @@ namespace HPHP {
     // Initialize the extension
     static PDOPgSql s_pgsql_driver;
 
+    IMPLEMENT_DEFAULT_EXTENSION_VERSION(pdo_pgsql, 1.0.2);
+
     PDOPgSql::PDOPgSql() : PDODriver("pgsql") {
     }
 
