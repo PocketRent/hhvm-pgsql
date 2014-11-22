@@ -1,9 +1,9 @@
+#include "pgsql.h"
 #include "pdo_pgsql_connection.h"
 #include "pdo_pgsql_statement.h"
 #include "pdo_pgsql.h"
 #include "hphp/runtime/ext/stream/ext_stream.h"
 #include "hphp/runtime/vm/jit/translator-inline.h"
-#include "pq.h"
 #undef PACKAGE_VERSION // pg_config defines it
 #include "pg_config.h" // needed for PG_VERSION
 

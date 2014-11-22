@@ -1,6 +1,5 @@
-#include "pq.h"
+#include "pgsql.h"
 
-#include "hphp/runtime/base/base-includes.h"
 #include "hphp/runtime/base/zend-string.h"
 
 #include "hphp/runtime/base/runtime-option.h"
