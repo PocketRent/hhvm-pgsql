@@ -310,6 +310,10 @@ stmt_retry:
             return false;
         }
 
+        if(colno < 0 || colno >= column_count){
+            return false;
+        }
+
         // We have already increased m_current_row by 1 in fetch
         long current_row = m_current_row - 1;
         if(m_result.fieldIsNull(current_row, colno)){
