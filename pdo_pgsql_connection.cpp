@@ -391,7 +391,7 @@ namespace HPHP {
     }
 
     bool PDOPgSqlConnection::preparer(const String& sql, sp_PDOStatement* stmt, const Variant &options){
-        PDOPgSqlStatement* s = newres<PDOPgSqlStatement>(this, m_conn);
+        PDOPgSqlStatement* s = NEWRES(PDOPgSqlStatement)(this, m_conn);
         *stmt = s;
 
         if(s->create(sql, options.toArray())){

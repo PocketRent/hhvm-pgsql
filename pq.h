@@ -6,6 +6,12 @@
 #include <libpq-fe.h>
 #include <utility>
 
+#ifdef NEWOBJ
+#define NEWRES(type) NEWOBJ(type)
+#else
+#define NEWRES(type) newres<type>
+#endif
+
 namespace PQ {
 
 class Connection;
