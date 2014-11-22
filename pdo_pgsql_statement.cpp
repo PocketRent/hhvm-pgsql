@@ -216,7 +216,7 @@ stmt_retry:
                 break;
             case OIDOID:
                 // Let's get back to this later
-                throw std::exception();
+                col->param_type = PDO_PARAM_STR;
                 break;
             case INT2OID:
             case INT4OID:
