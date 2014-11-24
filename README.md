@@ -1,20 +1,24 @@
 ## Postgres Extension for HipHop
 
-This is an implementation of the `pgsql` PHP extension for [HHVM][fb-hphp].
+This is an implementation of the `pgsql` and `pdo_pgsql` PHP extensions for
+[HHVM][fb-hphp].
 
 ### Prerequisites
 
-This extension only requires the HipHop VM itself and the `libpq` library distributed with Postgres.
+To run, this extension only requires the HipHop VM itself and the `libpq`
+library distributed with Postgres. Building it requires the HHVM header files,
+the HHVM CMake files and the `libpq` header files. These can usually be
+installed with the `hhvm-dev` and `libpq-dev` packages.
 
 ### Pre-built versions
 
-Pre-build versions of this extension are available in the [releases](https://github.com/PocketRent/hhvm-pgsql/tree/releases) branch.
+Pre-built versions of this extension are available in the
+[releases](pr-releases) branch.
 
 ### Building & Installation
 
-Installation requires a copy of HHVM to be built from source on the local machine, instructions
-on how to do this are available on the [HHVM Wiki][fb-wiki]. Once done, the following commands
-will build the extension, assuming you've also installed HHVM.
+Building requires the `hhvm-dev` and `libpq-dev` packages to be installed. Once
+they have been installed, the following commands will build the extensions.
 
 ~~~
 $ cd /path/to/extension
@@ -25,7 +29,10 @@ $ make
 
 This will produce a `pgsql.so` file, the dynamically-loadable extension.
 
-To enable the extension, you need to have the following section in your hhvm config file
+To enable the extension, you need to have the following section in your hhvm
+config file:
+
+Hdf format:
 
 ~~~
 DynamicExtensionPath = /path/to/hhvm/extensions
@@ -34,8 +41,16 @@ DynamicExtensions {
 }
 ~~~
 
-Where `/path/to/hhvm/extensions` is a folder containing all HipHop extensions, and `pgsql.so` is in
-it. This will cause the extension to be loaded when the virtual machine starts up.
+INI format:
+
+~~~
+hhvm.dynamic_extension_path = /path/to/hhvm/extensions
+hhvm.dynamic_extensions[pgsql] = pgsql.so
+~~~
+
+Where `/path/to/hhvm/extensions` is a folder containing all HHVM extensions, and
+`pgsql.so` is in it. This will cause the extension to be loaded when the virtual
+machine starts up.
 
 ### PostgreSQL types
 
@@ -103,17 +118,34 @@ option set to true.
 
 ### Hack Friendly Mode
 
-If you are using Hack, then you can use the provided `pgsql.hhi` file to type the functions. There
-is also a compile-time option that can be passed to cmake that makes some minor adjustments to the
-API to make the Hack type checker more useful with them. This mostly consists of altering
-functions that would normally return `FALSE` on error and making them return `null` instead. This
-takes advantage of the nullable types in Hack.
+If you are using Hack, then you can use the provided `pgsql.hhi` file to type
+the functions. There is also a compile-time option that can be passed to cmake
+that makes some minor adjustments to the API to make the Hack type checker more
+useful with them. This mostly consists of altering functions that would normally
+return `FALSE` on error and making them return `null` instead. This takes
+advantage of the nullable types in Hack.
 
 To enable Hack-friendly mode use this command instead of the `cmake` one above:
 
 ~~~
 $ cmake -DHACK_FRIENDLY=ON .
 ~~~
+
+### Running the tests
+
+In order to run the test suite you just have to call the `test.sh` file. There
+are three different ways to call this script:
+
+~~~
+$ ./test.sh
+$ ./test.sh ExecuteTest
+$ ./test.sh ExecuteTest#testNotPrepared
+~~~
+
+The first command will run the whole test suite. The second command will just
+execute the tests under the `ExecuteTest` class. The third command will execute
+the test named `testNotPrepared` that is inside the `ExecuteTest` class.
+
 
 ### Differences from Zend
 
@@ -146,32 +178,25 @@ There are a few differences from the standard Zend implementation.
   * `pg_untrace`
   * `pg_update`
 
-There is a connection pool, you can use the `pg_pconnect` function. The $connection_type parameter is
-ignored for both `pg_connect` and `pg_pconnect`. There are a few new function:
+There is a connection pool you can use with the `pg_pconnect` function.
 
-* `pg_connection_pool_stat`: It gives some information, eg. count of connections, free connections, etc.
+The `$connection_type` parameter is ignored for both `pg_connect` and
+`pg_pconnect`.
+
+There are a few new function:
+
+* `pg_connection_pool_stat`: It gives some information, eg. count of
+connections, free connections, etc.
 * `pg_connection_pool_sweep_free`: Closing all unused connection in all pool.
 
-The `pg_pconnect` create a different connection pool for each connection string.
+The `pg_pconnect` function creates a different connection pool for each
+connection string.
 
-Otherwise, all functionality is (or should be) the same as the Zend implementation.
+The `pg_fetch_object` function only supports returning `stdClass` objects.
 
-As always, bugs should be reported to the issue tracker and patches are very welcome.
+Otherwise, all functionality is (or should be) the same as the Zend
+implementation.
 
-[fb-hphp]: https://github.com/facebook/hhvm "HHVM"
-[fb-wiki]: https://github.com/facebook/hhvm/wiki "HHVM Wiki"
+As always, bugs should be reported to the issue tracker and patches are very
+welcome.
 
-### Running the tests
-
-In order to run the test suite you just have to call the `test.sh` file. There
-are three different ways to call this script:
-
-~~~
-$ ./test.sh
-$ ./test.sh ExecuteTest
-$ ./test.sh ExecuteTest#testNotPrepared
-~~~
-
-The first command will run the whole test suite. The second command will just
-execute the tests under the `ExecuteTest` class. The third command will execute
-the test named `testNotPrepared` that is inside the `ExecuteTest` class.

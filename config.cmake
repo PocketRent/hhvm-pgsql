@@ -3,7 +3,7 @@
 # TODO: we could just use: find_package(PostgreSQL REQUIRED). But there are
 # some Ubuntu versions with a buggy FindPostgreSQL.cmake file.
 FIND_PATH(PGSQL_INCLUDE_DIR NAMES libpq-fe.h
-    PATHS /usr/include /usr/include/postgresql /usr/local/include /usr/local/include/postgresql)
+    PATHS /usr/include /usr/include/postgresql /usr/local/include /usr/local/include/postgresql /usr/include/pgsql)
 
 FIND_LIBRARY(PostgreSQL_LIBRARIES NAMES pq PATHS /lib /usr/lib /usr/local/lib)
 
@@ -22,7 +22,12 @@ endif()
 
 include_directories(${PGSQL_INCLUDE_DIR})
 
-HHVM_EXTENSION(pgsql src/pgsql.cpp)
+HHVM_EXTENSION(pgsql
+  src/pgsql.cpp
+  src/pdo_pgsql.cpp
+  src/pdo_pgsql_statement.cpp
+  src/pdo_pgsql_connection.cpp
+)
 HHVM_SYSTEMLIB(pgsql src/ext_pgsql.php)
 
 target_link_libraries(pgsql ${PostgreSQL_LIBRARIES})
