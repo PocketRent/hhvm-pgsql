@@ -2,6 +2,7 @@
 #include "pdo_pgsql_connection.h"
 #include "pdo_pgsql.h"
 #include "pgsql.h"
+#include "pgtypes.h"
 #include <iomanip>
 
 
