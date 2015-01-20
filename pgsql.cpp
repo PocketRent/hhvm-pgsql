@@ -884,6 +884,26 @@ static Variant HHVM_FUNCTION(pg_client_encoding, const Resource& connection) {
     return ret;
 }
 
+static bool HHVM_FUNCTION(pg_end_copy, const Resource& connection) {
+    PGSQL * pgsql = PGSQL::Get(connection);
+
+    if (pgsql == nullptr) {
+        FAIL_RETURN;
+    }
+
+    return pgsql->get().endcopy();
+}
+
+static bool HHVM_FUNCTION(pg_put_line, const Resource& connection, const String& query) {
+    PGSQL * pgsql = PGSQL::Get(connection);
+
+    if (pgsql == nullptr) {
+        FAIL_RETURN;
+    }
+
+    return pgsql->get().putline(query.data());
+}
+
 static int64_t HHVM_FUNCTION(pg_transaction_status, const Resource& connection) {
     PGSQL * pgsql = PGSQL::Get(connection);
 
@@ -1677,6 +1697,7 @@ public:
         HHVM_FE(pg_connection_reset);
         HHVM_FE(pg_connection_status);
         HHVM_FE(pg_dbname);
+        HHVM_FE(pg_end_copy);
         HHVM_FE(pg_escape_bytea);
         HHVM_FE(pg_escape_identifier);
         HHVM_FE(pg_escape_literal);
@@ -1710,6 +1731,7 @@ public:
         HHVM_FE(pg_ping);
         HHVM_FE(pg_port);
         HHVM_FE(pg_prepare);
+        HHVM_FE(pg_put_line);
         HHVM_FE(pg_query_params);
         HHVM_FE(pg_query);
         HHVM_FE(pg_result_error_field);
