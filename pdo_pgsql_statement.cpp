@@ -13,7 +13,7 @@ namespace HPHP {
     unsigned long PDOPgSqlStatement::m_cursorNameCounter = 0;
     PDOPgSqlStatement::PDOPgSqlStatement(PDOPgSqlConnection* pdoconn, PQ::Connection* conn)
         : m_pdoconn(pdoconn), m_conn(conn),
-          m_result(), m_isPrepared(false), m_current_row(0) {
+          m_result(), m_disablePrepares(false), m_isPrepared(false), m_current_row(0) {
         this->dbh = pdoconn;
     }
 
@@ -80,6 +80,10 @@ namespace HPHP {
         return true;
     }
 
+    void PDOPgSqlStatement::setDisablePrepares(bool disable){
+        m_disablePrepares = disable;
+    }
+
     bool PDOPgSqlStatement::executer(){
         ExecStatusType status;
         if(m_result){
@@ -114,7 +118,7 @@ namespace HPHP {
             q << "FETCH FORWARD 0 FROM " << m_cursorName;
             m_result = m_conn->exec(q.str());
         } else if(m_stmtName.size() > 0) {
-            if(!m_isPrepared){
+            if(!m_isPrepared && !m_disablePrepares){
 stmt_retry:
                 m_result = m_conn->prepare(m_stmtName.c_str(), m_resolvedQuery.c_str(), bound_params.size(), param_types.data());
 
@@ -156,7 +160,11 @@ stmt_retry:
                 return false;
             }
 
-            m_result = m_conn->execPrepared(m_stmtName.c_str(), bound_params.size(), params.data(), param_lengths.data(), param_formats.data());
+            if (m_isPrepared){
+                m_result = m_conn->execPrepared(m_stmtName.c_str(), bound_params.size(), params.data(), param_lengths.data(), param_formats.data());
+            } else {
+                m_result = m_conn->exec(m_resolvedQuery.c_str(), bound_params.size(), params.data());
+            }
         } else {
             m_result = m_conn->exec(active_query_string.data());
         }

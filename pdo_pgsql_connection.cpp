@@ -97,7 +97,9 @@ static int php_pdo_parse_data_source(const char *data_source,
 
 namespace HPHP {
 
-    PDOPgSqlConnection::PDOPgSqlConnection() : m_conn(nullptr), pgoid(InvalidOid) {
+    PDOPgSqlConnection::PDOPgSqlConnection() 
+        : m_conn(nullptr), pgoid(InvalidOid),
+          m_emulate_prepare(false), m_disable_prepare(false) {
     }
 
     PDOPgSqlConnection::~PDOPgSqlConnection(){
@@ -381,6 +383,9 @@ namespace HPHP {
             case PDO_ATTR_EMULATE_PREPARES:
                 m_emulate_prepare = value.toBoolean();
                 return true;
+            case PDO_PGSQL_ATTR_DISABLE_PREPARES:
+                m_disable_prepare = value.toBoolean();
+                return true;
             default:
                 return false;
         }
@@ -394,6 +399,7 @@ namespace HPHP {
         PDOPgSqlStatement* s = NEWRES(PDOPgSqlStatement)(this, m_conn);
         *stmt = s;
 
+        s->setDisablePrepares(m_disable_prepare);
         if(s->create(sql, options.toArray())){
             alloc_own_columns = 1;
             return true;

@@ -46,6 +46,7 @@ namespace HPHP {
         ExecStatusType m_lastExec;
         std::string err_msg;
         bool m_emulate_prepare;
+        bool m_disable_prepare;
         const char* sqlstate(PQ::Result& result);
         void handleError(PDOPgSqlStatement* stmt, const char* sqlState, const char* msg);
         bool transactionCommand(const char* command);
