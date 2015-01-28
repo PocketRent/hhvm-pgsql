@@ -1,6 +1,7 @@
 #include "pgsql.h"
 #include "pdo_pgsql_connection.h"
 #include "pdo_pgsql_statement.h"
+#include "pdo_pgsql_resource.h"
 #include "pdo_pgsql.h"
 #include "hphp/runtime/ext/stream/ext_stream.h"
 #include "hphp/runtime/vm/jit/translator-inline.h"
@@ -97,12 +98,12 @@ static int php_pdo_parse_data_source(const char *data_source,
 
 namespace HPHP {
 
-    PDOPgSqlConnection::PDOPgSqlConnection() : m_conn(nullptr), pgoid(InvalidOid) {
+    PDOPgSqlConnection::PDOPgSqlConnection() : m_server(nullptr), pgoid(InvalidOid) {
     }
 
     PDOPgSqlConnection::~PDOPgSqlConnection(){
-        if(m_conn){
-            delete m_conn;
+        if(m_server){
+            delete m_server;
         }
     }
 
@@ -143,20 +144,20 @@ namespace HPHP {
         conninfo << username << "'";
         conninfo << " connect_timeout=" << connect_timeout;
 
-        m_conn = new PQ::Connection(conninfo.str());
+        m_server = new PQ::Connection(conninfo.str());
 
-        if(m_conn->status() == CONNECTION_OK){
+        if(m_server->status() == CONNECTION_OK){
             return true;
         } else {
-            handleError(NULL, PHP_PDO_PGSQL_CONNECTION_FAILURE_SQLSTATE, m_conn->errorMessage());
+            handleError(NULL, PHP_PDO_PGSQL_CONNECTION_FAILURE_SQLSTATE, m_server->errorMessage());
             return false;
         }
     }
 
     bool PDOPgSqlConnection::closer(){
-        if(m_conn){
-            delete m_conn;
-            m_conn = NULL;
+        if(m_server){
+            delete m_server;
+            m_server = NULL;
         }
 
         return false;
@@ -167,7 +168,7 @@ namespace HPHP {
 
         const char* query = sql.data();
 
-        PQ::Result res = m_conn->exec(query);
+        PQ::Result res = m_server->exec(query);
 
         if(!res){
             // I think this error should be handled in a different way perhaps?
@@ -196,7 +197,7 @@ namespace HPHP {
     bool PDOPgSqlConnection::transactionCommand(const char* command){
         testConnection();
 
-        PQ::Result res = m_conn->exec(command);
+        PQ::Result res = m_server->exec(command);
 
         if(!res){
             // I think this error should be handled in a different way perhaps?
@@ -227,17 +228,17 @@ namespace HPHP {
     }
 
     void PDOPgSqlConnection::testConnection(){
-        if(!m_conn){
+        if(!m_server){
             handleError(NULL, "08003", NULL);
         }
     }
 
     bool PDOPgSqlConnection::checkLiveness(){
-        if(!m_conn){
+        if(!m_server){
             return false;
         }
 
-        return m_conn->status() == CONNECTION_OK;
+        return m_server->status() == CONNECTION_OK;
     }
 
     const char* PDOPgSqlConnection::sqlstate(PQ::Result& result){
@@ -247,7 +248,7 @@ namespace HPHP {
     bool PDOPgSqlConnection::quoter(const String& input, String &quoted, PDOParamType paramtype){
         switch(paramtype){
             case PDO_PARAM_LOB:
-                quoted = m_conn->escapeByteA(input.data(), input.length());
+                quoted = m_server->escapeByteA(input.data(), input.length());
                 return true;
                 break;
             default:
@@ -256,7 +257,7 @@ namespace HPHP {
 
                 buffer[0] = '\'';
                 int error;
-                size_t written = m_conn->escapeString(buffer.get()+1, input.c_str(), input.length()*2+1, &error);
+                size_t written = m_server->escapeString(buffer.get()+1, input.c_str(), input.length()*2+1, &error);
                 if(error){
                     return false;
                 }
@@ -282,7 +283,7 @@ namespace HPHP {
         } else {
             const char *values[1];
             values[0] = name;
-            PQ::Result res = m_conn->exec("SELECT CURRVAL($1)", 1, values);
+            PQ::Result res = m_server->exec("SELECT CURRVAL($1)", 1, values);
 
             ExecStatusType status = res.status();
 
@@ -301,17 +302,17 @@ namespace HPHP {
                 value = String(PG_VERSION);
                 break;
             case PDO_ATTR_SERVER_VERSION:
-                if(m_conn->protocolVersion() >= 3){ // Postgres 7.4 or later
-                    value = String(m_conn->parameterStatus("server_version"), CopyString);
+                if(m_server->protocolVersion() >= 3){ // Postgres 7.4 or later
+                    value = String(m_server->parameterStatus("server_version"), CopyString);
                 } else {
-                    PQ::Result res = m_conn->exec("SELECT VERSION()");
+                    PQ::Result res = m_server->exec("SELECT VERSION()");
                     if(res && res.status() == PGRES_TUPLES_OK){
                         value = String((char *)res.getValue(0, 0), CopyString);
                     }
                 }
                 break;
             case PDO_ATTR_CONNECTION_STATUS:
-                switch(m_conn->status()){
+                switch(m_server->status()){
                     case CONNECTION_STARTED:
                         value = String("Waiting for connection to be made.", CopyString);
                         break;
@@ -344,12 +345,12 @@ namespace HPHP {
                 }
                 break;
             case PDO_ATTR_SERVER_INFO: {
-                int spid = m_conn->backendPID();
+                int spid = m_server->backendPID();
 
                 std::stringstream result;
-                result << "PID: " << spid << "; Client Encoding: " << m_conn->parameterStatus("client_encoding");
-                result << "; Is Superusser: " << m_conn->parameterStatus("is_superuser") << "; Session Authorization: ";
-                result << m_conn->parameterStatus("session_authorization") << "; Date Style: " << m_conn->parameterStatus("DateStyle");
+                result << "PID: " << spid << "; Client Encoding: " << m_server->parameterStatus("client_encoding");
+                result << "; Is Superusser: " << m_server->parameterStatus("is_superuser") << "; Session Authorization: ";
+                result << m_server->parameterStatus("session_authorization") << "; Date Style: " << m_server->parameterStatus("DateStyle");
 
                 value = String(result.str());
             }
@@ -359,21 +360,6 @@ namespace HPHP {
         }
 
         return 1;
-    }
-
-    bool PDOPgSqlConnection::fetchErr(PDOStatement* stmt, Array &info){
-        if(stmt == nullptr){
-            info.append(m_lastExec == InvalidOid ? Variant(Variant::NullInit()) : Variant(m_lastExec));
-            info.append(err_msg.empty() ? Variant(Variant::NullInit()) : Variant(err_msg));
-            return true;
-        } else {
-            PDOPgSqlStatement* s = static_cast<PDOPgSqlStatement*>(stmt);
-            auto status = s->m_result.status();
-            auto emsg = s->err_msg;
-            info.append(status == InvalidOid ? Variant(Variant::NullInit()) : Variant(status));
-            info.append(emsg.empty() ? Variant(Variant::NullInit()) : Variant(emsg));
-            return true;
-        }
     }
 
     bool PDOPgSqlConnection::setAttribute(int64_t attr, const Variant &value){
@@ -387,11 +373,15 @@ namespace HPHP {
     }
 
     bool PDOPgSqlConnection::support(SupportedMethod method){
-        return method != MethodPersistentShutdown;
+        return true;
     }
 
-    bool PDOPgSqlConnection::preparer(const String& sql, sp_PDOStatement* stmt, const Variant &options){
-        PDOPgSqlStatement* s = NEWRES(PDOPgSqlStatement)(this, m_conn);
+    bool PDOPgSqlConnection::preparer(const String& sql, sp_PDOStatement *stmt, const Variant& options) {
+        auto rsrc = newres<PDOPgSqlResource>(
+            std::dynamic_pointer_cast<PDOPgSqlConnection>(shared_from_this()));
+
+        auto s = newres<PDOPgSqlStatement>(rsrc, m_server);
+
         *stmt = s;
 
         if(s->create(sql, options.toArray())){

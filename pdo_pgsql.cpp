@@ -1,5 +1,6 @@
 #include "pdo_pgsql.h"
 #include "pdo_pgsql_connection.h"
+#include "pdo_pgsql_resource.h"
 
 namespace HPHP {
 
@@ -9,9 +10,10 @@ static PDOPgSql s_pgsql_driver;
 PDOPgSql::PDOPgSql() : PDODriver("pgsql") {
 }
 
-PDOConnection *PDOPgSql::createConnectionObject() {
-    return new PDOPgSqlConnection();
+PDOResource* PDOPgSql::createResourceImpl() {
+        return newres<PDOPgSqlResource>(std::make_shared<PDOPgSqlConnection>());
 }
+
 
 long pdo_attr_lval(const Array& options, int opt, long defaultValue){
     if(options.exists(opt)){
