@@ -23,12 +23,12 @@ endif()
 include_directories(${PGSQL_INCLUDE_DIR})
 
 HHVM_EXTENSION(pgsql
-  src/pgsql.cpp
-  src/pdo_pgsql.cpp
-  src/pdo_pgsql_statement.cpp
-  src/pdo_pgsql_connection.cpp
+  pgsql.cpp
+  pdo_pgsql.cpp
+  pdo_pgsql_statement.cpp
+  pdo_pgsql_connection.cpp
 )
-HHVM_SYSTEMLIB(pgsql src/ext_pgsql.php)
+HHVM_SYSTEMLIB(pgsql ext_pgsql.php)
 
 target_link_libraries(pgsql ${PostgreSQL_LIBRARIES})
 
