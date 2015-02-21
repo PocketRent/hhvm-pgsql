@@ -13,7 +13,7 @@ installed with the `hhvm-dev` and `libpq-dev` packages.
 ### Pre-built versions
 
 Pre-built versions of this extension are available in the
-[releases](pr-releases) branch.
+[releases][pr-releases] branch.
 
 ### Building & Installation
 

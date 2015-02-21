@@ -13,19 +13,19 @@ class Connection;
 class Result {
 public:
     Result(){
-        m_res = NULL;
+        m_res = nullptr;
     }
     Result(const Result&) = delete;
     Result& operator=(const Result&) = delete;
 
     Result(Result&& other) {
         m_res = other.m_res;
-        other.m_res = NULL;
+        other.m_res = nullptr;
     }
 
     Result& operator=(Result&& other) {
         m_res = other.m_res;
-        other.m_res = NULL;
+        other.m_res = nullptr;
         return *this;
     }
 
@@ -34,14 +34,14 @@ public:
     ~Result() {
         if (m_res) {
             PQclear(m_res);
-            m_res = NULL;
+            m_res = nullptr;
         }
     }
 
     void clear() {
         if (m_res) {
             PQclear(m_res);
-            m_res = NULL;
+            m_res = nullptr;
         }
     }
 
@@ -234,13 +234,13 @@ public:
     Result exec(const std::string &cmd) { return exec(cmd.c_str()); }
 
     Result exec(const char *command, int nParams, const char * const *paramValues) {
-        PGresult *res = PQexecParams(m_conn, command, nParams, NULL,
-                paramValues, NULL, NULL, 0);
+        PGresult *res = PQexecParams(m_conn, command, nParams, nullptr,
+                paramValues, nullptr, nullptr, 0);
         return Result(res);
     }
 
     Result prepare(const char *name, const char *query, int nParams) {
-        return prepare(name, query, nParams, NULL);
+        return prepare(name, query, nParams, nullptr);
     }
 
     Result prepare(const char *name, const char *query, int nParams, const Oid *paramTypes) {
@@ -249,7 +249,7 @@ public:
     }
 
     Result execPrepared(const char *name, int nParams, const char * const *paramValues) {
-        return execPrepared(name, nParams, paramValues, NULL, NULL);
+        return execPrepared(name, nParams, paramValues, nullptr, nullptr);
     }
 
     Result execPrepared(const char *name, int nParams, const char * const *paramValues, const int *paramLengths, const int *paramFormats){
@@ -263,16 +263,16 @@ public:
     }
 
     bool sendQuery(const char *command, int nParams, const char * const *paramValues) {
-        return (bool)PQsendQueryParams(m_conn, command, nParams, NULL,
-                paramValues, NULL, NULL, 0);
+        return (bool)PQsendQueryParams(m_conn, command, nParams, nullptr,
+                paramValues, nullptr, nullptr, 0);
     }
 
     bool sendPrepare(const char *name, const char *query, int nParams) {
-        return (bool)PQsendPrepare(m_conn, name, query, nParams, NULL);
+        return (bool)PQsendPrepare(m_conn, name, query, nParams, nullptr);
     }
 
     bool sendQueryPrepared(const char *name, int nParams, const char * const *paramValues) {
-        return (bool)PQsendQueryPrepared(m_conn, name, nParams, paramValues, NULL, NULL, 0);
+        return (bool)PQsendQueryPrepared(m_conn, name, nParams, paramValues, nullptr, nullptr, 0);
     }
 
     Result result() {

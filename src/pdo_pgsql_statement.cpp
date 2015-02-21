@@ -1,3 +1,4 @@
+#include "pdo_pgsql_resource.h"
 #include "pdo_pgsql_statement.h"
 #include "pdo_pgsql_connection.h"
 #include "pdo_pgsql.h"
@@ -5,17 +6,16 @@
 #include "pgtypes.h"
 #include <iomanip>
 
-
-#define STMT_HANDLE_ERROR(res) (*m_pdoconn).handleError(this, (*m_pdoconn).sqlstate(res), res.errorMessage())
+#define STMT_HANDLE_ERROR(res) (*m_conn).handleError(this, (*m_conn).sqlstate(res), res.errorMessage())
 
 namespace HPHP {
 
     unsigned long PDOPgSqlStatement::m_stmtNameCounter = 0;
     unsigned long PDOPgSqlStatement::m_cursorNameCounter = 0;
-    PDOPgSqlStatement::PDOPgSqlStatement(PDOPgSqlConnection* pdoconn, PQ::Connection* conn)
-        : m_pdoconn(pdoconn), m_conn(conn),
+    PDOPgSqlStatement::PDOPgSqlStatement(PDOPgSqlResource* conn, PQ::Connection* server)
+        : m_conn(conn->conn()), m_server(server),
           m_result(), m_isPrepared(false), m_current_row(0) {
-        this->dbh = pdoconn;
+        this->dbh = dynamic_cast<PDOResource*>(conn);
     }
 
     PDOPgSqlStatement::~PDOPgSqlStatement(){
@@ -27,7 +27,7 @@ namespace HPHP {
             if(m_isPrepared){
                 std::stringstream ss;
                 ss << "DEALLOCATE " << m_stmtName;
-                m_conn->exec(ss.str());
+                m_server->exec(ss.str());
             }
         }
 
@@ -35,10 +35,10 @@ namespace HPHP {
             // Do we need a check here maybe to see if we've actually got a cursor or not?
             std::stringstream ss;
             ss << "CLOSE " << m_cursorName;
-            m_conn->exec(ss.str());
+            m_server->exec(ss.str());
         }
-        m_pdoconn = NULL;
-        m_conn = NULL;
+        m_server = nullptr;
+        m_conn = nullptr;
     }
 
     bool PDOPgSqlStatement::create(const String& sql, const Array &options){
@@ -51,13 +51,13 @@ namespace HPHP {
             // Disable prepared statements
             supports_placeholders = PDO_PLACEHOLDER_NONE;
         } else if (
-            m_pdoconn->m_emulate_prepare ||
+            m_conn->m_emulate_prepare ||
             (!options.empty() && pdo_attr_lval(options, PDO_ATTR_EMULATE_PREPARES, 0))
             ){
             supports_placeholders = PDO_PLACEHOLDER_NONE;
         }
 
-        if(supports_placeholders != PDO_PLACEHOLDER_NONE && m_conn->protocolVersion() > 2){
+        if(supports_placeholders != PDO_PLACEHOLDER_NONE && m_server->protocolVersion() > 2){
             named_rewrite_template = "$%d";
             String nsql;
             int ret = pdo_parse_params(this, sql, nsql);
@@ -65,8 +65,8 @@ namespace HPHP {
                 // Query was rewritten
             } else if (ret == -1){
                 // Query didn't parse - exception should have been thrown at this point
-                strncpy(m_pdoconn->error_code, error_code, 6);
-                m_pdoconn->error_code[5] = '\0';
+                strncpy(m_conn->error_code, error_code, 6);
+                m_conn->error_code[5] = '\0';
                 return false;
             } else {
                 // Original is great
@@ -92,13 +92,13 @@ namespace HPHP {
             if(m_isPrepared){
                 std::stringstream ss;
                 ss << "CLOSE " << m_cursorName;
-                m_result = m_conn->exec(ss.str());
+                m_result = m_server->exec(ss.str());
             }
 
             std::stringstream q;
             q << "DECLARE " << m_cursorName << " SCROLL CURSOR WITH HOLD FOR " << active_query_string.data();
 
-            m_result = m_conn->exec(q.str());
+            m_result = m_server->exec(q.str());
 
             status = m_result.status();
 
@@ -113,11 +113,11 @@ namespace HPHP {
 
             // Fetch to be able to get total number of rows
             q << "FETCH FORWARD 0 FROM " << m_cursorName;
-            m_result = m_conn->exec(q.str());
+            m_result = m_server->exec(q.str());
         } else if(m_stmtName.size() > 0) {
             if(!m_isPrepared){
 stmt_retry:
-                m_result = m_conn->prepare(m_stmtName.c_str(), m_resolvedQuery.c_str(), bound_params.size(), param_types.data());
+                m_result = m_server->prepare(m_stmtName.c_str(), m_resolvedQuery.c_str(), bound_params.size(), param_types.data());
 
                 status = m_result.status();
                 switch(status) {
@@ -129,10 +129,10 @@ stmt_retry:
                     default:
                         // Read Zend implementation for this one. I am not sure if this applies to hhvm as well or not
                         // but figure better leave it in here than not
-                        if(!strcmp(m_pdoconn->sqlstate(m_result), "42P05")){
+                        if(!strcmp(m_conn->sqlstate(m_result), "42P05")){
                             std::stringstream q;
                             q << "DEALLOCATE " << m_stmtName;
-                            m_conn->exec(q.str());
+                            m_server->exec(q.str());
                             goto stmt_retry;
                         } else {
                             STMT_HANDLE_ERROR(m_result);
@@ -153,13 +153,13 @@ stmt_retry:
             }
 
             if(params.size() != bound_params.size()){
-                m_pdoconn->handleError(this, "XX000", "Parameters not being bound correctly");
+                m_conn->handleError(this, "XX000", "Parameters not being bound correctly");
                 return false;
             }
 
-            m_result = m_conn->execPrepared(m_stmtName.c_str(), bound_params.size(), params.data(), param_lengths.data(), param_formats.data());
+            m_result = m_server->execPrepared(m_stmtName.c_str(), bound_params.size(), params.data(), param_lengths.data(), param_formats.data());
         } else {
-            m_result = m_conn->exec(active_query_string.data());
+            m_result = m_server->exec(active_query_string.data());
         }
 
         status = m_result.status();
@@ -178,7 +178,7 @@ stmt_retry:
 
         if(status == PGRES_COMMAND_OK){
             row_count = m_result.lcmdTuples();
-            m_pdoconn->pgoid = m_result.oidValue();
+            m_conn->pgoid = m_result.oidValue();
         } else {
             row_count = m_result.numTuples();
         }
@@ -249,7 +249,7 @@ stmt_retry:
             }
             std::string q = strprintf("FETCH %s FROM %s", oriStr.c_str(), m_cursorName.c_str());
 
-            m_result = m_conn->exec(q);
+            m_result = m_server->exec(q);
             ExecStatusType status = m_result.status();
 
             if(status != PGRES_COMMAND_OK && status != PGRES_TUPLES_OK){
@@ -289,7 +289,7 @@ stmt_retry:
 
         std::string q = strprintf("SELECT TYPNAME FROM PG_TYPE WHERE OID=%u", coltype);
 
-        PQ::Result res = m_conn->exec(q);
+        PQ::Result res = m_server->exec(q);
 
         ExecStatusType status = res.status();
 
@@ -371,7 +371,7 @@ stmt_retry:
                             if(bound_param_map.exists(param->name, true)){
                                 param->paramno = atoi(bound_param_map[param->name].asCStrRef().data() + 1)-1;
                             } else {
-                                m_pdoconn->handleError(this, "HY093", param->name.data());
+                                m_conn->handleError(this, "HY093", param->name.data());
                                 return false;
                             }
                         }
@@ -397,7 +397,7 @@ stmt_retry:
 
                     if(param->paramno >= 0){
                         if(param->paramno >= elems){
-                            m_pdoconn->handleError(this, "HY105", "Too many parameters bound");
+                            m_conn->handleError(this, "HY105", "Too many parameters bound");
                             return false;
                         }
 
