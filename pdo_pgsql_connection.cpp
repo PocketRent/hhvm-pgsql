@@ -242,7 +242,14 @@ namespace HPHP {
     }
 
     const char* PDOPgSqlConnection::sqlstate(PQ::Result& result){
-        return result.errorField(PG_DIAG_SQLSTATE);
+        const char* sqlstate = result.errorField(PG_DIAG_SQLSTATE);
+        
+        // Handle case where libpq doesn't return an SQLSTATE (eg. server connection lost)
+        if(sqlstate == nullptr){
+            sqlstate = "XX000";
+        }
+        
+        return sqlstate;
     }
 
     bool PDOPgSqlConnection::quoter(const String& input, String &quoted, PDOParamType paramtype){
