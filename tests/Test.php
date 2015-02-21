@@ -64,10 +64,10 @@ abstract class Test
   public $specific;
 
   /**
-   * @var string: true if only the tests that require the `RespectTypes`
+   * @var string: true if only the tests that require the `TypedResults`
    * option have to be run.
    */
-  public $respect;
+  public $typed;
 
   /**
    * Constructor. It should be subclassed only if you want to set the
@@ -75,7 +75,7 @@ abstract class Test
    *
    * @param string $specific The filter to be applied.
    */
-  public function __construct($specific, $respect)
+  public function __construct($specific, $typed)
   {
     $this->total = 0;
     $this->ok = 0;
@@ -83,7 +83,7 @@ abstract class Test
     $this->localFails = 0;
     $this->db = true;
     $this->specific = $specific;
-    $this->respect = $respect;
+    $this->typed = $typed;
   }
 
   /**
@@ -136,8 +136,8 @@ abstract class Test
       if ($this->startsWith($m, 'test')) {
         $name = $klass . '#' . $m;
 
-        // Check the `RespectTypes` option.
-        if ($this->respect !== $this->startsWith($m, 'testRespect')) {
+        // Check the `TypedResults` option.
+        if ($this->typed !== $this->startsWith($m, 'testTyped')) {
           continue;
         }
 

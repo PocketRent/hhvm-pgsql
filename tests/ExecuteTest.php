@@ -50,7 +50,7 @@ class ExecuteTest extends Test
     $this->assert(pg_last_error($this->connection) === $msg);
   }
 
-  public function testRespectTypes()
+  public function testTypedResults()
   {
     $sql = 'INSERT INTO test(id, valid) VALUES($1, $2)';
     $ret = pg_prepare($this->connection, 'query', $sql);

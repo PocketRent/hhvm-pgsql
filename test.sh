@@ -24,6 +24,6 @@ fi
 
 ${HHVM} \
     -vDynamicExtensions.0=${DIR}/pgsql.so   \
-    -c ${DIR}/tests/respect.hdf             \
-    ${DIR}/tests/runner.php "$1" respect
+    -c ${DIR}/tests/typed.hdf             \
+    ${DIR}/tests/runner.php "$1" typed
 

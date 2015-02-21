@@ -56,11 +56,11 @@ machine starts up.
 
 By default, all the data retrieved by pg\_fetch\_\* functions are strings. This
 is the same behavior as in the standard Zend implementation. However, you can
-change this by setting the `RespectTypes` option.
+change this by setting the `TypedResults` option.
 
 ~~~
 PGSQL {
-  RespectTypes = false
+  TypedResults = false
 }
 ~~~
 
@@ -111,7 +111,7 @@ var_dump($res); // => outputs: bool(false)
 The previous example fails because converting `false` into a string results to
 an empty string, which is not a valid boolean format in PostgreSQL. As
 explained [here](https://bugs.php.net/bug.php?id=44791), this is the proper
-behavior. However, this is not what we want if `RespectTypes = true`. If this
+behavior. However, this is not what we want if `TypedResults = true`. If this
 option is set to true, then the boolean value will be converted as expected by
 PostgreSQL. Therefore, the previous example executes successfully with this
 option set to true.

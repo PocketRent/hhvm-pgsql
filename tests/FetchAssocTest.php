@@ -23,7 +23,7 @@ class FetchAssocTest extends Test
   }
 
   // Same as testFetchAssoc but respecting the types.
-  public function testRespectFetchAssoc()
+  public function testTypedFetchAssoc()
   {
     pg_prepare($this->connection, 'query', 'SELECT * FROM complete');
     $ret = pg_execute($this->connection, 'query', []);

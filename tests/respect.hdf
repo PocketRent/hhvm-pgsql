@@ -1,5 +1,0 @@
-
-PGSQL {
-  RespectTypes = true
-}
-

@@ -114,7 +114,7 @@ public:
     static bool AutoResetPersistent;
     static bool IgnoreNotice;
     static bool LogNotice;
-    static bool RespectTypes;
+    static bool TypedResults;
 
     static PGSQL *Get(const Variant& conn_id);
 
@@ -424,7 +424,7 @@ Variant PGSQLResult::getFieldVal(int row, int field) {
     char * value = m_res.getValue(row, field);
     int length = m_res.getLength(row, field);
 
-    if (PGSQL::RespectTypes) {
+    if (PGSQL::TypedResults) {
         Oid type = m_res.type(field);
         return getTypedFieldVal(value, length, type);
     }
@@ -694,7 +694,7 @@ public:
                 m_c_strs.push_back(nullptr);
             } else {
                 String str;
-                if (PGSQL::RespectTypes && param.isBoolean()) {
+                if (PGSQL::TypedResults && param.isBoolean()) {
                     str = (param.asBooleanVal()) ? "t" : "f";
                 } else {
                     str = param.toString();
@@ -1695,7 +1695,7 @@ int  PGSQL::MaxLinks            = -1;
 bool PGSQL::AutoResetPersistent = false;
 bool PGSQL::IgnoreNotice        = false;
 bool PGSQL::LogNotice           = false;
-bool PGSQL::RespectTypes        = false;
+bool PGSQL::TypedResults        = false;
 
 namespace { // Anonymous Namespace
 static class pgsqlExtension : public Extension {
@@ -1712,7 +1712,7 @@ public:
         PGSQL::AutoResetPersistent = Config::GetBool(ini, pgsql["AutoResetPersistent"]);
         PGSQL::IgnoreNotice        = Config::GetBool(ini, pgsql["IgnoreNotice"]);
         PGSQL::LogNotice           = Config::GetBool(ini, pgsql["LogNotice"]);
-        PGSQL::RespectTypes        = Config::GetBool(ini, pgsql["RespectTypes"]);
+        PGSQL::TypedResults        = Config::GetBool(ini, pgsql["TypedResults"]);
     }
 
     virtual void moduleInit() {
