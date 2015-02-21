@@ -2,6 +2,7 @@
 #define incl_HPHP_PDO_PGSQL_STATEMENT_H_
 
 #include "hphp/runtime/ext/pdo_driver.h"
+#include "pdo_pgsql_resource.h"
 #include "pq.h"
 #include "stdarg.h"
 
@@ -14,12 +15,13 @@
 #define OIDOID      26
 
 namespace HPHP {
-    class PDOPgSqlConnection;
     class PDOPgSqlStatement : public PDOStatement {
-        friend class PDOPgSqlConnection;
+        friend PDOPgSqlConnection;
+
     public:
         DECLARE_RESOURCE_ALLOCATION(PDOPgSqlStatement);
-        PDOPgSqlStatement(PDOPgSqlConnection* m_pdoconn, PQ::Connection* pq);
+
+        PDOPgSqlStatement(PDOPgSqlResource* conn, PQ::Connection* server);
         virtual ~PDOPgSqlStatement();
 
         bool create(const String& sql, const Array &options);
@@ -37,9 +39,10 @@ namespace HPHP {
         virtual bool cursorCloser();
 
         virtual bool support(SupportedMethod method);
+
     private:
-        PDOPgSqlConnection* m_pdoconn;
-        PQ::Connection* m_conn;
+        std::shared_ptr<PDOPgSqlConnection> m_conn;
+        PQ::Connection* m_server;
         static unsigned long m_stmtNameCounter;
         static unsigned long m_cursorNameCounter;
         std::string m_stmtName;

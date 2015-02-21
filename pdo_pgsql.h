@@ -5,11 +5,9 @@
 #include "hphp/runtime/ext/pdo_driver.h"
 
 namespace HPHP {
-class PDOPgSql : public PDODriver {
-public:
+struct PDOPgSql : public PDODriver {
     PDOPgSql();
-
-    virtual PDOConnection* createConnectionObject();
+    PDOResource* createResourceImpl() override;
 };
 
 long pdo_attr_lval(const Array& options, int opt, long defaultValue);
