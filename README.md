@@ -52,6 +52,70 @@ Where `/path/to/hhvm/extensions` is a folder containing all HHVM extensions, and
 `pgsql.so` is in it. This will cause the extension to be loaded when the virtual
 machine starts up.
 
+### PostgreSQL types
+
+By default, all the data retrieved by pg\_fetch\_\* functions are strings. This
+is the same behavior as in the standard Zend implementation. However, you can
+change this by setting the `TypedResults` option.
+
+~~~
+PGSQL {
+  TypedResults = false
+}
+~~~
+
+If you set this option to true, then the type of each column will be an
+equivalent of the original PostgreSQL type. So, for example:
+
+```php
+// The connection has already been established.
+
+$ret = pg_query($connection, 'SELECT * FROM example');
+$row = pg_fetch_assoc($ret);
+var_dump($row);
+
+// => It outputs the following:
+//
+// array(3) {
+//   ["id"]=>
+//   int(1)
+//   ["name"]=>
+//   string(13) "A test string"
+//   ["valid"]=>
+//   bool(true)
+// }
+```
+
+The supported types are the following (the types not listed below will be
+converted to strings):
+
+| PostgreSQL                     | PHP    |
+|--------------------------------|--------|
+| boolean                        | bool   |
+| smallint, integer, bigint      | int    |
+| decimal, numeric               | string |
+| real, double precision         | float  |
+| smallserial, serial, bigserial | int    |
+
+Moreover, this also works when inserting/updating rows. A common pitfall is
+doing the following:
+
+```php
+// The connection has already been established.
+
+pg_prepare($connection, 'query', 'INSERT INTO test(id, valid) VALUES($1, $2)');
+$res = pg_execute($connection, 'query', [1, false]);
+var_dump($res); // => outputs: bool(false)
+```
+
+The previous example fails because converting `false` into a string results to
+an empty string, which is not a valid boolean format in PostgreSQL. As
+explained [here](https://bugs.php.net/bug.php?id=44791), this is the proper
+behavior. However, this is not what we want if `TypedResults = true`. If this
+option is set to true, then the boolean value will be converted as expected by
+PostgreSQL. Therefore, the previous example executes successfully with this
+option set to true.
+
 ### Hack Friendly Mode
 
 If you are using Hack, then you can use the provided `pgsql.hhi` file to type
@@ -66,6 +130,22 @@ To enable Hack-friendly mode use this command instead of the `cmake` one above:
 ~~~
 $ cmake -DHACK_FRIENDLY=ON .
 ~~~
+
+### Running the tests
+
+In order to run the test suite you just have to call the `test.sh` file. There
+are three different ways to call this script:
+
+~~~
+$ ./test.sh
+$ ./test.sh ExecuteTest
+$ ./test.sh ExecuteTest#testNotPrepared
+~~~
+
+The first command will run the whole test suite. The second command will just
+execute the tests under the `ExecuteTest` class. The third command will execute
+the test named `testNotPrepared` that is inside the `ExecuteTest` class.
+
 
 ### Differences from Zend
 
@@ -120,5 +200,3 @@ implementation.
 As always, bugs should be reported to the issue tracker and patches are very
 welcome.
 
-[fb-hphp]: https://github.com/facebook/hhvm "HHVM"
-[pr-releases]: https://github.com/PocketRent/hhvm-pgsql/tree/releases

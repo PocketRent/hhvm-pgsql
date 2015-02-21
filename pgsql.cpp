@@ -1,3 +1,5 @@
+#include "pq.h"
+#include "pgtypes.h"
 #include "pgsql.h"
 
 #include "hphp/runtime/base/zend-string.h"
@@ -112,6 +114,7 @@ public:
     static bool AutoResetPersistent;
     static bool IgnoreNotice;
     static bool LogNotice;
+    static bool TypedResults;
 
     static PGSQL *Get(const Variant& conn_id);
 
@@ -180,7 +183,8 @@ public:
     Variant fieldIsNull(const Variant& row, const Variant& field, const char *fn_name = nullptr);
 
     Variant getFieldVal(const Variant& row, const Variant& field, const char *fn_name = nullptr);
-    String getFieldVal(int row, int field, const char *fn_name = nullptr);
+    Variant getFieldVal(int row, int field);
+    Variant getTypedFieldVal(char * value, int length, const Oid& type) const;
 
     PGSQL * getConn() { return m_conn; }
 
@@ -412,17 +416,57 @@ Variant PGSQLResult::getFieldVal(const Variant& row, const Variant& field, const
     return false;
 }
 
-String PGSQLResult::getFieldVal(int row, int field, const char *fn_name) {
+Variant PGSQLResult::getFieldVal(int row, int field) {
     if (m_res.fieldIsNull(row, field)) {
         return null_string;
-    } else {
-        char * value = m_res.getValue(row, field);
-        int length = m_res.getLength(row, field);
-
-        return String(value, length, CopyString);
     }
+
+    char * value = m_res.getValue(row, field);
+    int length = m_res.getLength(row, field);
+
+    if (PGSQL::TypedResults) {
+        Oid type = m_res.type(field);
+        return getTypedFieldVal(value, length, type);
+    }
+    return String(value, length, CopyString);
 }
 
+Variant PGSQLResult::getTypedFieldVal(char * value, int length, const Oid& type) const {
+    char *end;
+    union { long long intValue; double dValue; };
+
+    switch (type) {
+    case BOOLOID:
+        return value && *value == 't';
+    case INT2OID:
+    case INT4OID:
+    case INT8OID:
+        // The Variant type treats any kind of integer as int64, so it's
+        // fine to mix them all. Numeric values with an arbitrary precision
+        // number will be handled as strings though.
+        intValue = std::strtoll(value, &end, 10);
+
+        // On error just treat it as a string.
+        if (errno == ERANGE || value == end) {
+            break;
+        }
+        return intValue;
+    case FLOAT4OID:
+    case FLOAT8OID:
+        // In the same spirit as for integer types, any kind of floating point
+        // number will be handled as a double.
+        dValue = strtod(value, &end);
+
+        // On error just treat it as a string.
+        if (errno == ERANGE || value == end) {
+            break;
+        }
+        return dValue;
+    }
+
+    // We default to the string value.
+    return String(value, length, CopyString);
+}
 
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -649,8 +693,15 @@ public:
                 m_strings.push_back(null_string);
                 m_c_strs.push_back(nullptr);
             } else {
-                m_strings.push_back(param.toString());
-                m_c_strs.push_back(m_strings.back().data());
+                String str;
+                if (PGSQL::TypedResults && param.isBoolean()) {
+                    str = (param.asBooleanVal()) ? "t" : "f";
+                } else {
+                    str = param.toString();
+                }
+
+                m_strings.push_back(str);
+                m_c_strs.push_back(str.data());
             }
         }
     }
@@ -1644,6 +1695,7 @@ int  PGSQL::MaxLinks            = -1;
 bool PGSQL::AutoResetPersistent = false;
 bool PGSQL::IgnoreNotice        = false;
 bool PGSQL::LogNotice           = false;
+bool PGSQL::TypedResults        = false;
 
 namespace { // Anonymous Namespace
 static class pgsqlExtension : public Extension {
@@ -1660,7 +1712,7 @@ public:
         PGSQL::AutoResetPersistent = Config::GetBool(ini, pgsql["AutoResetPersistent"]);
         PGSQL::IgnoreNotice        = Config::GetBool(ini, pgsql["IgnoreNotice"]);
         PGSQL::LogNotice           = Config::GetBool(ini, pgsql["LogNotice"]);
-
+        PGSQL::TypedResults        = Config::GetBool(ini, pgsql["TypedResults"]);
     }
 
     virtual void moduleInit() {

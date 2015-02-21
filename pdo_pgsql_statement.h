@@ -6,14 +6,6 @@
 #include "pq.h"
 #include "stdarg.h"
 
-#define BOOLOID     16
-#define BYTEAOID    17
-#define INT8OID     20
-#define INT2OID     21
-#define INT4OID     23
-#define TEXTOID     25
-#define OIDOID      26
-
 namespace HPHP {
     class PDOPgSqlStatement : public PDOStatement {
         friend PDOPgSqlConnection;

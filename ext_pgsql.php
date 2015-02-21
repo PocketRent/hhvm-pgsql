@@ -250,4 +250,3 @@ function pg_untrace(resource $connection): bool;
 
 <<__Native>>
 function pg_version(resource $connection): ?array;
-

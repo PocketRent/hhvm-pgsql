@@ -1,0 +1,5 @@
+
+PGSQL {
+  TypedResults = true
+}
+
