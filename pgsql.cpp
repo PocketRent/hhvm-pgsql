@@ -650,7 +650,7 @@ public:
                 m_c_strs.push_back(nullptr);
             } else {
                 m_strings.push_back(param.toString());
-                m_c_strs.push_back(param.toString().data());
+                m_c_strs.push_back(m_strings.back().data());
             }
         }
     }
