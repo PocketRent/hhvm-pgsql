@@ -65,7 +65,7 @@ namespace HPHP {
         std::string strprintf(const char* format, ...){
             va_list args;
             va_start (args, format);
-            int size = vsnprintf(NULL, 0, format, args);
+            int size = vsnprintf(nullptr, 0, format, args);
             auto buffer = std::unique_ptr<char[]>(new char[size+1]);
             if(vsnprintf((char*)buffer.get(), size+1, format, args) != size){
                 throw std::exception();

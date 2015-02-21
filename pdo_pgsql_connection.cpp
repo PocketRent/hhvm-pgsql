@@ -149,7 +149,7 @@ namespace HPHP {
         if(m_server->status() == CONNECTION_OK){
             return true;
         } else {
-            handleError(NULL, PHP_PDO_PGSQL_CONNECTION_FAILURE_SQLSTATE, m_server->errorMessage());
+            handleError(nullptr, PHP_PDO_PGSQL_CONNECTION_FAILURE_SQLSTATE, m_server->errorMessage());
             return false;
         }
     }
@@ -157,7 +157,7 @@ namespace HPHP {
     bool PDOPgSqlConnection::closer(){
         if(m_server){
             delete m_server;
-            m_server = NULL;
+            m_server = nullptr;
         }
 
         return false;
@@ -172,7 +172,7 @@ namespace HPHP {
 
         if(!res){
             // I think this error should be handled in a different way perhaps?
-            handleError(NULL, "XX000", "Invalid result data");
+            handleError(nullptr, "XX000", "Invalid result data");
             return -1;
         }
 
@@ -185,7 +185,7 @@ namespace HPHP {
         } else if(status == PGRES_TUPLES_OK) {
             ret = 0L;
         } else {
-            HANDLE_ERROR(NULL, res);
+            HANDLE_ERROR(nullptr, res);
             return -1L;
         }
 
@@ -201,7 +201,7 @@ namespace HPHP {
 
         if(!res){
             // I think this error should be handled in a different way perhaps?
-            handleError(NULL, "XX000", "Invalid result data");
+            handleError(nullptr, "XX000", "Invalid result data");
             return -1;
         }
 
@@ -211,7 +211,7 @@ namespace HPHP {
             return true;
         }
 
-        HANDLE_ERROR(NULL, res);
+        HANDLE_ERROR(nullptr, res);
         return false;
     }
 
@@ -229,7 +229,7 @@ namespace HPHP {
 
     void PDOPgSqlConnection::testConnection(){
         if(!m_server){
-            handleError(NULL, "08003", NULL);
+            handleError(nullptr, "08003", nullptr);
         }
     }
 
@@ -272,7 +272,7 @@ namespace HPHP {
     }
 
     String PDOPgSqlConnection::lastId(const char *name){
-        if (name == NULL || strlen(name) == 0){
+        if (name == nullptr || strlen(name) == 0){
             // This branch of code doesn't seem to ever do anything useful
             // however it does pretty much the same as the zend implementation
             // and that doesn't seem to provide anything useful either
@@ -290,7 +290,7 @@ namespace HPHP {
             if(res && (status == PGRES_TUPLES_OK)){
                 return String(res.getValue(0, 0), CopyString);
             } else {
-                HANDLE_ERROR(NULL, res);
+                HANDLE_ERROR(nullptr, res);
                 return empty_string();
             }
         }

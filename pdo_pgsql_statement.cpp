@@ -36,8 +36,8 @@ namespace HPHP {
             ss << "CLOSE " << m_cursorName;
             m_server->exec(ss.str());
         }
-        m_server = NULL;
-        m_conn = NULL;
+        m_server = nullptr;
+        m_conn = nullptr;
     }
 
     bool PDOPgSqlStatement::create(const String& sql, const Array &options){
