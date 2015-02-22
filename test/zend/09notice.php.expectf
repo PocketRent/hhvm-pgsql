@@ -1,0 +1,5 @@
+resource(%d) of type (pgsql result)
+
+Notice: %s
+%s already a transaction in progress
+pg_last_notice() is Ok
