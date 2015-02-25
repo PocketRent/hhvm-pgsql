@@ -580,6 +580,7 @@ void PGSQLConnectionPool::CloseFreeConnections()
 
 PGSQLConnectionPoolContainer::PGSQLConnectionPoolContainer()
     :m_pools() {
+    PQinitSSL(0);
 }
 
 
