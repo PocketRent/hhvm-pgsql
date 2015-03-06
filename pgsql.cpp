@@ -1793,9 +1793,7 @@ public:
 
 }
 
-extern "C" Extension *getModule() {
-    return &s_pgsql_extension;
-}
+HHVM_GET_MODULE(pgsql);
 
 ///////////////////////////////////////////////////////////////////////////////
 
