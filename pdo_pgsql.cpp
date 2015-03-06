@@ -11,8 +11,8 @@ PDOPgSql::PDOPgSql() : PDODriver("pgsql") {
     PQinitSSL(0);
 }
 
-PDOResource* PDOPgSql::createResourceImpl() {
-        return newres<PDOPgSqlResource>(std::make_shared<PDOPgSqlConnection>());
+SmartPtr<PDOResource> PDOPgSql::createResourceImpl() {
+        return makeSmartPtr<PDOPgSqlResource>(std::make_shared<PDOPgSqlConnection>());
 }
 
 

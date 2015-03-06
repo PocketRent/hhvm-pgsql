@@ -59,7 +59,7 @@ namespace HPHP {
         if(supports_placeholders != PDO_PLACEHOLDER_NONE && m_server->protocolVersion() > 2){
             named_rewrite_template = "$%d";
             String nsql;
-            int ret = pdo_parse_params(this, sql, nsql);
+            int ret = pdo_parse_params(sp_PDOStatement(this), sql, nsql);
             if(ret == 1){
                 // Query was rewritten
             } else if (ret == -1){
