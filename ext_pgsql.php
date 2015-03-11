@@ -75,16 +75,16 @@ function pg_exec(resource $connection, string $stmtname, array<mixed> $params): 
 }
 
 <<__Native>>
-function pg_fetch_all_columns(resource $result, int $column=0): ?array<string,mixed>;
+function pg_fetch_all_columns(resource $result, int $column=0): mixed;
 
 <<__Native>>
-function pg_fetch_all(resource $result): ?array<int,array<string,mixed>>;
+function pg_fetch_all(resource $result): mixed;
 
 <<__Native>>
-function pg_fetch_array(resource $result, ?int $row = null, int $result_type = 3): ?array;
+function pg_fetch_array(resource $result, ?int $row = null, int $result_type = 3): mixed;
 
 <<__Native>>
-function pg_fetch_assoc(resource $result, ?int $row = null): ?array<string,mixed>;
+function pg_fetch_assoc(resource $result, ?int $row = null): mixed;
 
 function pg_fetch_object(resource $result, ?int $row = null): mixed {
     return ($return = pg_fetch_assoc($result, $row)) ? (object) $return : $return;
@@ -94,7 +94,7 @@ function pg_fetch_object(resource $result, ?int $row = null): mixed {
 function pg_fetch_result(resource $result, ?int $row = null, mixed $field = null): mixed;
 
 <<__Native>>
-function pg_fetch_row(resource $result, ?int $row = null): ?array<int,mixed>;
+function pg_fetch_row(resource $result, ?int $row = null): mixed;
 
 <<__Native>>
 function pg_field_is_null(resource $result, mixed $row, mixed $field = null): ?int;
@@ -225,7 +225,7 @@ function pg_result_status(resource $result, int $type = 1): mixed;
 function pg_send_execute(resource $connection, string $stmtname, array<mixed> $params): bool;
 
 <<__Native>>
-function pg_send_prepare(resource $connection, string $stmtname, string $query = null): bool;
+function pg_send_prepare(resource $connection, string $stmtname, string $query): bool;
 
 <<__Native>>
 function pg_send_query_params(resource $connection, string $query, array<mixed> $params): bool;
