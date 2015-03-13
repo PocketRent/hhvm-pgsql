@@ -28,29 +28,17 @@ $ make
 ~~~
 
 This will produce a `pgsql.so` file, the dynamically-loadable extension.
+Copy this file to `/etc/hhvm/pgsql.so`.
 
 To enable the extension, you need to have the following section in your hhvm
 config file:
 
-Hdf format:
-
 ~~~
-DynamicExtensionPath = /path/to/hhvm/extensions
-DynamicExtensions {
-	* = pgsql.so
-}
+extension_dir = /etc/hhvm
+hhvm.extensions[pgsql] = pgsql.so
 ~~~
 
-INI format:
-
-~~~
-hhvm.dynamic_extension_path = /path/to/hhvm/extensions
-hhvm.dynamic_extensions[pgsql] = pgsql.so
-~~~
-
-Where `/path/to/hhvm/extensions` is a folder containing all HHVM extensions, and
-`pgsql.so` is in it. This will cause the extension to be loaded when the virtual
-machine starts up.
+This will cause the extension to be loaded when the virtual machine starts up.
 
 ### Hack Friendly Mode
 
