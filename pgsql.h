@@ -3,8 +3,6 @@
 
 #include "pq.h"
 
-#include "hphp/runtime/base/base-includes.h"
-
 #ifdef NEWOBJ
 #define NEWRES(type) NEWOBJ(type)
 #else
