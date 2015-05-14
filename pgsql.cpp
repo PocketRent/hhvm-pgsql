@@ -207,8 +207,8 @@ PGSQL *PGSQL::Get(const Variant& conn_id) {
         return nullptr;
     }
 
-    PGSQL *pgsql = conn_id.toResource().getTyped<PGSQL>(true, true);
-    return pgsql;
+    auto pgsql = dyn_cast_or_null<PGSQL>(conn_id.toResource());
+    return pgsql.get();
 }
 
 static void notice_processor(PGSQL *pgsql, const char *message) {
@@ -303,8 +303,8 @@ PGSQLResult *PGSQLResult::Get(const Variant& result) {
         return nullptr;
     }
 
-    auto *res = result.toResource().getTyped<PGSQLResult>(true, true);
-    return res;
+    auto res = dyn_cast_or_null<PGSQLResult>(result.toResource());
+    return res.get();
 }
 
 PGSQLResult::PGSQLResult(PGSQL * conn, PQ::Result res)
@@ -1656,12 +1656,12 @@ public:
     {
         Hdf pgsql = hdf["PGSQL"];
 
-        PGSQL::AllowPersistent     = Config::GetBool(ini, pgsql["AllowPersistent"], true);
-        PGSQL::MaxPersistent       = Config::GetInt32(ini, pgsql["MaxPersistent"], -1);
-        PGSQL::MaxLinks            = Config::GetInt32(ini, pgsql["MaxLinks"], -1);
-        PGSQL::AutoResetPersistent = Config::GetBool(ini, pgsql["AutoResetPersistent"]);
-        PGSQL::IgnoreNotice        = Config::GetBool(ini, pgsql["IgnoreNotice"]);
-        PGSQL::LogNotice           = Config::GetBool(ini, pgsql["LogNotice"]);
+        PGSQL::AllowPersistent     = Config::GetBool(ini, pgsql, "AllowPersistent", true);
+        PGSQL::MaxPersistent       = Config::GetInt32(ini, pgsql, "MaxPersistent", -1);
+        PGSQL::MaxLinks            = Config::GetInt32(ini, pgsql, "MaxLinks", -1);
+        PGSQL::AutoResetPersistent = Config::GetBool(ini, pgsql, "AutoResetPersistent");
+        PGSQL::IgnoreNotice        = Config::GetBool(ini, pgsql, "IgnoreNotice");
+        PGSQL::LogNotice           = Config::GetBool(ini, pgsql, "LogNotice");
 
     }
 
