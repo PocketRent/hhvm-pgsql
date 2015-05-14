@@ -207,7 +207,7 @@ PGSQL *PGSQL::Get(const Variant& conn_id) {
         return nullptr;
     }
 
-    PGSQL *pgsql = conn_id.toResource().getTyped<PGSQL>(true, true);
+    PGSQL *pgsql = conn_id.toResource().getTyped<PGSQL>(true, true).get();
     return pgsql;
 }
 
@@ -303,7 +303,7 @@ PGSQLResult *PGSQLResult::Get(const Variant& result) {
         return nullptr;
     }
 
-    auto *res = result.toResource().getTyped<PGSQLResult>(true, true);
+    auto *res = result.toResource().getTyped<PGSQLResult>(true, true).get();
     return res;
 }
 
@@ -1654,14 +1654,13 @@ public:
 
     virtual void moduleLoad(const IniSetting::Map& ini, Hdf hdf)
     {
-        Hdf pgsql = hdf["PGSQL"];
 
-        PGSQL::AllowPersistent     = Config::GetBool(ini, pgsql["AllowPersistent"], true);
-        PGSQL::MaxPersistent       = Config::GetInt32(ini, pgsql["MaxPersistent"], -1);
-        PGSQL::MaxLinks            = Config::GetInt32(ini, pgsql["MaxLinks"], -1);
-        PGSQL::AutoResetPersistent = Config::GetBool(ini, pgsql["AutoResetPersistent"]);
-        PGSQL::IgnoreNotice        = Config::GetBool(ini, pgsql["IgnoreNotice"]);
-        PGSQL::LogNotice           = Config::GetBool(ini, pgsql["LogNotice"]);
+        PGSQL::AllowPersistent     = Config::GetBool(ini, hdf, "PGSQL.AllowPersistent", true);
+        PGSQL::MaxPersistent       = Config::GetInt32(ini, hdf, "PGSQL.MaxPersistent", -1);
+        PGSQL::MaxLinks            = Config::GetInt32(ini, hdf, "PGSQL.MaxLinks", -1);
+        PGSQL::AutoResetPersistent = Config::GetBool(ini, hdf, "PGSQL.AutoResetPersistent");
+        PGSQL::IgnoreNotice        = Config::GetBool(ini, hdf, "PGSQL.IgnoreNotice");
+        PGSQL::LogNotice           = Config::GetBool(ini, hdf, "PGSQL.LogNotice");
 
     }
 
