@@ -12,9 +12,14 @@ PDOPgSql::PDOPgSql() : PDODriver("pgsql") {
 }
 
 SmartPtr<PDOResource> PDOPgSql::createResourceImpl() {
-        return makeSmartPtr<PDOPgSqlResource>(std::make_shared<PDOPgSqlConnection>());
+    return makeSmartPtr<PDOPgSqlResource>(std::make_shared<PDOPgSqlConnection>());
 }
 
+SmartPtr<PDOResource> PDOPgSql::createResourceImpl(const sp_PDOConnection& conn) {
+    return makeSmartPtr<PDOPgSqlResource>(
+        std::dynamic_pointer_cast<PDOPgSqlConnection>(conn)
+    );
+}
 
 long pdo_attr_lval(const Array& options, int opt, long defaultValue){
     if(options.exists(opt)){

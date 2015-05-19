@@ -200,7 +200,7 @@ stmt_retry:
             }
         }
 
-        PDOColumn *col = columns[colno].toResource().getTyped<PDOColumn>();
+        PDOColumn *col = columns[colno].toResource().getTyped<PDOColumn>().get();
         col->name = String(m_result.fieldName(colno));
         col->maxlen = m_result.size(colno);
         col->precision = m_result.precision(colno);
@@ -322,7 +322,7 @@ stmt_retry:
 
         char* val = m_result.getValue(current_row, colno);
 
-        PDOColumn* col = columns[colno].toResource().getTyped<PDOColumn>();
+        PDOColumn* col = columns[colno].toResource().getTyped<PDOColumn>().get();
 
         switch(col->param_type){
             case PDO_PARAM_INT:
