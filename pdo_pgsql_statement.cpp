@@ -2,7 +2,6 @@
 #include "pdo_pgsql_statement.h"
 #include "pdo_pgsql_connection.h"
 #include "pdo_pgsql.h"
-#include "pgsql.h"
 #include <iomanip>
 
 #define STMT_HANDLE_ERROR(res) (*m_conn).handleError(this, (*m_conn).sqlstate(res), res.errorMessage())
@@ -59,7 +58,7 @@ namespace HPHP {
         if(supports_placeholders != PDO_PLACEHOLDER_NONE && m_server->protocolVersion() > 2){
             named_rewrite_template = "$%d";
             String nsql;
-            int ret = pdo_parse_params(this, sql, nsql);
+            int ret = pdo_parse_params(sp_PDOStatement(this), sql, nsql);
             if(ret == 1){
                 // Query was rewritten
             } else if (ret == -1){
@@ -197,7 +196,7 @@ stmt_retry:
 
         if(columns.empty()){
             for(int i = 0; i < column_count; i++){
-                columns.set(i, Resource(NEWRES(PDOColumn)()));
+                columns.set(i, Resource(newres<PDOColumn>()));
             }
         }
 

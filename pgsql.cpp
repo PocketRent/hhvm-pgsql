@@ -1,5 +1,7 @@
-#include "pgsql.h"
+#include <queue>
+#include "pq.h"
 
+#include "hphp/runtime/base/array-iterator.h"
 #include "hphp/runtime/base/zend-string.h"
 
 #include "hphp/runtime/base/runtime-option.h"
@@ -666,7 +668,7 @@ public:
 static Variant HHVM_FUNCTION(pg_connect, const String& connection_string, int connect_type /* = 0 */) {
     PGSQL * pgsql = nullptr;
 
-    pgsql = NEWRES(PGSQL)(connection_string);
+    pgsql = newres<PGSQL>(connection_string);
 
     if (!pgsql->get()) {
         delete pgsql;
@@ -681,7 +683,7 @@ static Variant HHVM_FUNCTION(pg_pconnect, const String& connection_string, int c
 
     PGSQLConnectionPool& pool = s_connectionPoolContainer.GetPool(connection_string.toCppString());
 
-    pgsql = NEWRES(PGSQL)(pool);
+    pgsql = newres<PGSQL>(pool);
 
     if (!pgsql->get()) {
         delete pgsql;
@@ -1135,7 +1137,7 @@ static Variant HHVM_FUNCTION(pg_query, const Resource& connection, const String&
     if (_handle_query_result("pg_query", conn->get(), res))
         FAIL_RETURN;
 
-    PGSQLResult *pgresult = NEWRES(PGSQLResult)(conn, std::move(res));
+    PGSQLResult *pgresult = newres<PGSQLResult>(conn, std::move(res));
 
     return Resource(pgresult);
 }
@@ -1153,7 +1155,7 @@ static Variant HHVM_FUNCTION(pg_query_params, const Resource& connection, const 
     if (_handle_query_result("pg_query_params", conn->get(), res))
         FAIL_RETURN;
 
-    PGSQLResult *pgresult = NEWRES(PGSQLResult)(conn, std::move(res));
+    PGSQLResult *pgresult = newres<PGSQLResult>(conn, std::move(res));
 
     return Resource(pgresult);
 }
@@ -1169,7 +1171,7 @@ static Variant HHVM_FUNCTION(pg_prepare, const Resource& connection, const Strin
     if (_handle_query_result("pg_prepare", conn->get(), res))
         FAIL_RETURN;
 
-    PGSQLResult *pgres = NEWRES(PGSQLResult)(conn, std::move(res));
+    PGSQLResult *pgres = newres<PGSQLResult>(conn, std::move(res));
 
     return Resource(pgres);
 }
@@ -1187,7 +1189,7 @@ static Variant HHVM_FUNCTION(pg_execute, const Resource& connection, const Strin
         FAIL_RETURN;
     }
 
-    PGSQLResult *pgres = NEWRES(PGSQLResult)(conn, std::move(res));
+    PGSQLResult *pgres = newres<PGSQLResult>(conn, std::move(res));
 
     return Resource(pgres);
 }
@@ -1241,7 +1243,7 @@ static Variant HHVM_FUNCTION(pg_get_result, const Resource& connection) {
         FAIL_RETURN;
     }
 
-    PGSQLResult *pgresult = NEWRES(PGSQLResult)(conn, std::move(res));
+    PGSQLResult *pgresult = newres<PGSQLResult>(conn, std::move(res));
 
     return Resource(pgresult);
 }
@@ -1813,9 +1815,7 @@ public:
 
 }
 
-extern "C" Extension *getModule() {
-    return &s_pgsql_extension;
-}
+HHVM_GET_MODULE(pgsql);
 
 ///////////////////////////////////////////////////////////////////////////////
 

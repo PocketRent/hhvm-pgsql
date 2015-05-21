@@ -1,4 +1,3 @@
-#include "pgsql.h"
 #include "pdo_pgsql_connection.h"
 #include "pdo_pgsql_statement.h"
 #include "pdo_pgsql_resource.h"
