@@ -6,8 +6,8 @@
 
 #define PHP_PDO_PGSQL_CONNECTION_FAILURE_SQLSTATE "08006"
 namespace HPHP {
-
     class PDOPgSqlStatement;
+
     class PDOPgSqlConnection : public PDOConnection {
         friend class PDOPgSqlStatement;
     public:
@@ -35,13 +35,12 @@ namespace HPHP {
         virtual int getAttribute(int64_t attr, Variant &value);
         virtual bool setAttribute(int64_t attr, const Variant &value);
 
-        virtual bool fetchErr(PDOStatement* stmt, Array &info);
-
         String pgsqlLOBCreate();
 
-        virtual bool preparer(const String& sql, sp_PDOStatement *stmt, const Variant &options);
+        bool preparer(const String& sql, sp_PDOStatement *stmt, const Variant& options) override;
+
     private:
-        PQ::Connection* m_conn;
+        PQ::Connection* m_server;
         Oid pgoid;
         ExecStatusType m_lastExec;
         std::string err_msg;

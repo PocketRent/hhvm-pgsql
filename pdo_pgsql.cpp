@@ -1,5 +1,6 @@
 #include "pdo_pgsql.h"
 #include "pdo_pgsql_connection.h"
+#include "pdo_pgsql_resource.h"
 
 namespace HPHP {
 
@@ -7,10 +8,17 @@ namespace HPHP {
 static PDOPgSql s_pgsql_driver;
 
 PDOPgSql::PDOPgSql() : PDODriver("pgsql") {
+    PQinitSSL(0);
 }
 
-PDOConnection *PDOPgSql::createConnectionObject() {
-    return new PDOPgSqlConnection();
+SmartPtr<PDOResource> PDOPgSql::createResourceImpl() {
+    return makeSmartPtr<PDOPgSqlResource>(std::make_shared<PDOPgSqlConnection>());
+}
+
+SmartPtr<PDOResource> PDOPgSql::createResourceImpl(const sp_PDOConnection& conn) {
+    return makeSmartPtr<PDOPgSqlResource>(
+        std::dynamic_pointer_cast<PDOPgSqlConnection>(conn)
+    );
 }
 
 long pdo_attr_lval(const Array& options, int opt, long defaultValue){

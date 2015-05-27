@@ -1,5 +1,7 @@
-#include "pgsql.h"
+#include <queue>
+#include "pq.h"
 
+#include "hphp/runtime/base/array-iterator.h"
 #include "hphp/runtime/base/zend-string.h"
 
 #include "hphp/runtime/base/runtime-option.h"
@@ -205,7 +207,7 @@ PGSQL *PGSQL::Get(const Variant& conn_id) {
         return nullptr;
     }
 
-    PGSQL *pgsql = conn_id.toResource().getTyped<PGSQL>(true, true);
+    PGSQL *pgsql = conn_id.toResource().getTyped<PGSQL>(true, true).get();
     return pgsql;
 }
 
@@ -301,7 +303,7 @@ PGSQLResult *PGSQLResult::Get(const Variant& result) {
         return nullptr;
     }
 
-    auto *res = result.toResource().getTyped<PGSQLResult>(true, true);
+    auto *res = result.toResource().getTyped<PGSQLResult>(true, true).get();
     return res;
 }
 
@@ -650,7 +652,7 @@ public:
                 m_c_strs.push_back(nullptr);
             } else {
                 m_strings.push_back(param.toString());
-                m_c_strs.push_back(param.toString().data());
+                m_c_strs.push_back(m_strings.back().data());
             }
         }
     }
@@ -666,7 +668,7 @@ public:
 static Variant HHVM_FUNCTION(pg_connect, const String& connection_string, int connect_type /* = 0 */) {
     PGSQL * pgsql = nullptr;
 
-    pgsql = NEWRES(PGSQL)(connection_string);
+    pgsql = newres<PGSQL>(connection_string);
 
     if (!pgsql->get()) {
         delete pgsql;
@@ -681,7 +683,7 @@ static Variant HHVM_FUNCTION(pg_pconnect, const String& connection_string, int c
 
     PGSQLConnectionPool& pool = s_connectionPoolContainer.GetPool(connection_string.toCppString());
 
-    pgsql = NEWRES(PGSQL)(pool);
+    pgsql = newres<PGSQL>(pool);
 
     if (!pgsql->get()) {
         delete pgsql;
@@ -1115,7 +1117,7 @@ static Variant HHVM_FUNCTION(pg_query, const Resource& connection, const String&
     if (_handle_query_result("pg_query", conn->get(), res))
         FAIL_RETURN;
 
-    PGSQLResult *pgresult = NEWRES(PGSQLResult)(conn, std::move(res));
+    PGSQLResult *pgresult = newres<PGSQLResult>(conn, std::move(res));
 
     return Resource(pgresult);
 }
@@ -1133,7 +1135,7 @@ static Variant HHVM_FUNCTION(pg_query_params, const Resource& connection, const 
     if (_handle_query_result("pg_query_params", conn->get(), res))
         FAIL_RETURN;
 
-    PGSQLResult *pgresult = NEWRES(PGSQLResult)(conn, std::move(res));
+    PGSQLResult *pgresult = newres<PGSQLResult>(conn, std::move(res));
 
     return Resource(pgresult);
 }
@@ -1149,7 +1151,7 @@ static Variant HHVM_FUNCTION(pg_prepare, const Resource& connection, const Strin
     if (_handle_query_result("pg_prepare", conn->get(), res))
         FAIL_RETURN;
 
-    PGSQLResult *pgres = NEWRES(PGSQLResult)(conn, std::move(res));
+    PGSQLResult *pgres = newres<PGSQLResult>(conn, std::move(res));
 
     return Resource(pgres);
 }
@@ -1167,7 +1169,7 @@ static Variant HHVM_FUNCTION(pg_execute, const Resource& connection, const Strin
         FAIL_RETURN;
     }
 
-    PGSQLResult *pgres = NEWRES(PGSQLResult)(conn, std::move(res));
+    PGSQLResult *pgres = newres<PGSQLResult>(conn, std::move(res));
 
     return Resource(pgres);
 }
@@ -1221,7 +1223,7 @@ static Variant HHVM_FUNCTION(pg_get_result, const Resource& connection) {
         FAIL_RETURN;
     }
 
-    PGSQLResult *pgresult = NEWRES(PGSQLResult)(conn, std::move(res));
+    PGSQLResult *pgresult = newres<PGSQLResult>(conn, std::move(res));
 
     return Resource(pgresult);
 }
@@ -1654,12 +1656,12 @@ public:
     {
         Hdf pgsql = hdf["PGSQL"];
 
-        PGSQL::AllowPersistent     = Config::GetBool(ini, pgsql["AllowPersistent"], true);
-        PGSQL::MaxPersistent       = Config::GetInt32(ini, pgsql["MaxPersistent"], -1);
-        PGSQL::MaxLinks            = Config::GetInt32(ini, pgsql["MaxLinks"], -1);
-        PGSQL::AutoResetPersistent = Config::GetBool(ini, pgsql["AutoResetPersistent"]);
-        PGSQL::IgnoreNotice        = Config::GetBool(ini, pgsql["IgnoreNotice"]);
-        PGSQL::LogNotice           = Config::GetBool(ini, pgsql["LogNotice"]);
+        PGSQL::AllowPersistent     = Config::GetBool(ini,  pgsql, "AllowPersistent", true);
+        PGSQL::MaxPersistent       = Config::GetInt32(ini, pgsql, "MaxPersistent", -1);
+        PGSQL::MaxLinks            = Config::GetInt32(ini, pgsql, "MaxLinks", -1);
+        PGSQL::AutoResetPersistent = Config::GetBool(ini,  pgsql, "AutoResetPersistent");
+        PGSQL::IgnoreNotice        = Config::GetBool(ini,  pgsql, "IgnoreNotice");
+        PGSQL::LogNotice           = Config::GetBool(ini,  pgsql, "LogNotice");
 
     }
 
@@ -1791,9 +1793,7 @@ public:
 
 }
 
-extern "C" Extension *getModule() {
-    return &s_pgsql_extension;
-}
+HHVM_GET_MODULE(pgsql);
 
 ///////////////////////////////////////////////////////////////////////////////
 
