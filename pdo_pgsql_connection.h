@@ -34,6 +34,7 @@ namespace HPHP {
 
         virtual int getAttribute(int64_t attr, Variant &value);
         virtual bool setAttribute(int64_t attr, const Variant &value);
+        virtual bool fetchErr(PDOStatement* stmt, Array &info);
 
         String pgsqlLOBCreate();
 
