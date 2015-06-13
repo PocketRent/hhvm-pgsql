@@ -1,6 +1,8 @@
 #include "pdo_pgsql.h"
 #include "pdo_pgsql_connection.h"
 #include "pdo_pgsql_resource.h"
+#include "hphp/runtime/base/array-data.h"
+#include "hphp/runtime/base/array-init.h"
 
 namespace HPHP {
 
