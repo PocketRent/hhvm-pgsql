@@ -2,7 +2,7 @@
 #define incl_HPHP_PDO_PGSQL_H_
 
 #include "hphp/runtime/base/type-string.h"
-#include "hphp/runtime/ext/pdo_driver.h"
+#include "hphp/runtime/ext/pdo/pdo_driver.h"
 
 namespace HPHP {
 struct PDOPgSql : public PDODriver {
