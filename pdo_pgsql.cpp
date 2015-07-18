@@ -13,12 +13,12 @@ PDOPgSql::PDOPgSql() : PDODriver("pgsql") {
     PQinitSSL(0);
 }
 
-SmartPtr<PDOResource> PDOPgSql::createResourceImpl() {
-    return makeSmartPtr<PDOPgSqlResource>(std::make_shared<PDOPgSqlConnection>());
+req::ptr<PDOResource> PDOPgSql::createResourceImpl() {
+	return req::make<PDOPgSqlResource>(std::make_shared<PDOPgSqlConnection>());
 }
 
-SmartPtr<PDOResource> PDOPgSql::createResourceImpl(const sp_PDOConnection& conn) {
-    return makeSmartPtr<PDOPgSqlResource>(
+req::ptr<PDOResource> PDOPgSql::createResourceImpl(const sp_PDOConnection& conn) {
+	return req::make<PDOPgSqlResource>(
         std::dynamic_pointer_cast<PDOPgSqlConnection>(conn)
     );
 }
