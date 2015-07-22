@@ -2,13 +2,13 @@
 #define incl_HPHP_PDO_PGSQL_H_
 
 #include "hphp/runtime/base/type-string.h"
-#include "hphp/runtime/ext/pdo_driver.h"
+#include "hphp/runtime/ext/pdo/pdo_driver.h"
 
 namespace HPHP {
 struct PDOPgSql : public PDODriver {
     PDOPgSql();
-    virtual SmartPtr<PDOResource> createResourceImpl() override;
-    virtual SmartPtr<PDOResource> createResourceImpl(const sp_PDOConnection& conn) override;
+    virtual req::ptr<PDOResource> createResourceImpl() override;
+    virtual req::ptr<PDOResource> createResourceImpl(const sp_PDOConnection& conn) override;
 };
 
 long pdo_attr_lval(const Array& options, int opt, long defaultValue);
