@@ -1,7 +1,7 @@
 #ifndef incl_HPHP_PDO_PGSQL_STATEMENT_H_
 #define incl_HPHP_PDO_PGSQL_STATEMENT_H_
 
-#include "hphp/runtime/ext/pdo/pdo_driver.h"
+#include "hphp/runtime/ext/pdo_driver.h"
 #include "pdo_pgsql_resource.h"
 #include "pq.h"
 #include "stdarg.h"

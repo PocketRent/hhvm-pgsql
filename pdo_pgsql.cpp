@@ -1,8 +1,6 @@
 #include "pdo_pgsql.h"
 #include "pdo_pgsql_connection.h"
 #include "pdo_pgsql_resource.h"
-#include "hphp/runtime/base/array-data.h"
-#include "hphp/runtime/base/array-init.h"
 
 namespace HPHP {
 
@@ -13,12 +11,12 @@ PDOPgSql::PDOPgSql() : PDODriver("pgsql") {
     PQinitSSL(0);
 }
 
-req::ptr<PDOResource> PDOPgSql::createResourceImpl() {
-	return req::make<PDOPgSqlResource>(std::make_shared<PDOPgSqlConnection>());
+SmartPtr<PDOResource> PDOPgSql::createResourceImpl() {
+    return makeSmartPtr<PDOPgSqlResource>(std::make_shared<PDOPgSqlConnection>());
 }
 
-req::ptr<PDOResource> PDOPgSql::createResourceImpl(const sp_PDOConnection& conn) {
-	return req::make<PDOPgSqlResource>(
+SmartPtr<PDOResource> PDOPgSql::createResourceImpl(const sp_PDOConnection& conn) {
+    return makeSmartPtr<PDOPgSqlResource>(
         std::dynamic_pointer_cast<PDOPgSqlConnection>(conn)
     );
 }
