@@ -310,6 +310,14 @@ public:
         return pg_encoding_to_char(enc);
     }
 
+    bool endcopy() {
+        return PQendcopy(m_conn) == 0;
+    }
+
+    bool putline(const char *query) {
+        return PQputline(m_conn, query) == 0;
+    }
+
     int backendPID() {
         return PQbackendPID(m_conn);
     }
