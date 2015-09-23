@@ -10,10 +10,10 @@ namespace HPHP {
 
     unsigned long PDOPgSqlStatement::m_stmtNameCounter = 0;
     unsigned long PDOPgSqlStatement::m_cursorNameCounter = 0;
-    PDOPgSqlStatement::PDOPgSqlStatement(PDOPgSqlResource* conn, PQ::Connection* server)
+    PDOPgSqlStatement::PDOPgSqlStatement(req::ptr<PDOPgSqlResource> conn, PQ::Connection* server)
         : m_conn(conn->conn()), m_server(server),
           m_result(), m_isPrepared(false), m_current_row(0) {
-        this->dbh = dynamic_cast<PDOResource*>(conn);
+        this->dbh = cast<PDOResource>(conn);
     }
 
     PDOPgSqlStatement::~PDOPgSqlStatement(){
@@ -196,11 +196,11 @@ stmt_retry:
 
         if(columns.empty()){
             for(int i = 0; i < column_count; i++){
-                columns.set(i, Resource(newres<PDOColumn>()));
+                columns.set(i, Resource(req::make<PDOColumn>()));
             }
         }
 
-        PDOColumn *col = columns[colno].toResource().getTyped<PDOColumn>().get();
+        req::ptr<PDOColumn> col = cast<PDOColumn>(columns[colno].toResource());
         col->name = String(m_result.fieldName(colno));
         col->maxlen = m_result.size(colno);
         col->precision = m_result.precision(colno);
@@ -322,7 +322,7 @@ stmt_retry:
 
         char* val = m_result.getValue(current_row, colno);
 
-        PDOColumn* col = columns[colno].toResource().getTyped<PDOColumn>().get();
+        req::ptr<PDOColumn> col = cast<PDOColumn>(columns[colno].toResource());
 
         switch(col->param_type){
             case PDO_PARAM_INT:

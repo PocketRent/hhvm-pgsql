@@ -242,12 +242,12 @@ namespace HPHP {
 
     const char* PDOPgSqlConnection::sqlstate(PQ::Result& result){
         const char* sqlstate = result.errorField(PG_DIAG_SQLSTATE);
-        
+
         // Handle case where libpq doesn't return an SQLSTATE (eg. server connection lost)
         if(sqlstate == nullptr){
             sqlstate = "XX000";
         }
-        
+
         return sqlstate;
     }
 
@@ -383,10 +383,10 @@ namespace HPHP {
     }
 
     bool PDOPgSqlConnection::preparer(const String& sql, sp_PDOStatement *stmt, const Variant& options) {
-        auto rsrc = newres<PDOPgSqlResource>(
+        auto rsrc = req::make<PDOPgSqlResource>(
             std::dynamic_pointer_cast<PDOPgSqlConnection>(shared_from_this()));
 
-        auto s = newres<PDOPgSqlStatement>(rsrc, m_server);
+        auto s = req::make<PDOPgSqlStatement>(rsrc, m_server);
 
         *stmt = s;
 
