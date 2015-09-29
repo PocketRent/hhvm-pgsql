@@ -368,6 +368,22 @@ namespace HPHP {
         return 1;
     }
 
+    bool PDOPgSqlConnection::fetchErr(PDOStatement *stmt, Array &info) {
+        if (stmt == nullptr) {
+            info.append(m_lastExec == InvalidOid ? Variant(Variant::NullInit()) : Variant(m_lastExec));
+            info.append(err_msg.empty() ? Variant(Variant::NullInit()) : Variant(err_msg));
+            return true;
+        } else {
+            auto *s = static_cast<PDOPgSqlStatement *>(stmt);
+            auto status = s->m_result.status();
+            auto emsg = s->err_msg;
+
+            info.append(status == InvalidOid ? Variant(Variant::NullInit()) : Variant(status));
+            info.append(emsg.empty() ? Variant(Variant::NullInit()) : Variant(emsg));
+            return true;
+        }
+    }
+
     bool PDOPgSqlConnection::setAttribute(int64_t attr, const Variant &value){
         switch(attr){
             case PDO_ATTR_EMULATE_PREPARES:
