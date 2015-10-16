@@ -16,6 +16,11 @@ If everything is working fine, this will output `bool(true)`.
 
 You may also need to restart HHVM to have the server pick up the extension.
 
+## HHVM 3.10.0
+
+* Debian [8 (jessie)](https://github.com/PocketRent/hhvm-pgsql/raw/releases/3.10.0/debian/jessie/pgsql.so)
+* Ubuntu [14.04 (trusty)](https://github.com/PocketRent/hhvm-pgsql/raw/releases/3.10.0/ubuntu/trusty/pgsql.so) / [15.04 (vivid)](https://github.com/PocketRent/hhvm-pgsql/raw/releases/3.10.0/ubuntu/vivid/pgsql.so)
+
 ## HHVM 3.7.0
 
 * Debian [8 (jessie)](https://github.com/PocketRent/hhvm-pgsql/raw/releases/3.7.0/debian/jessie/pgsql.so)
