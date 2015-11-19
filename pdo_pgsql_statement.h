@@ -1,7 +1,7 @@
 #ifndef incl_HPHP_PDO_PGSQL_STATEMENT_H_
 #define incl_HPHP_PDO_PGSQL_STATEMENT_H_
 
-#include "hphp/runtime/ext/pdo_driver.h"
+#include "hphp/runtime/ext/pdo/pdo_driver.h"
 #include "pdo_pgsql_resource.h"
 #include "pq.h"
 #include "stdarg.h"
@@ -21,7 +21,7 @@ namespace HPHP {
     public:
         DECLARE_RESOURCE_ALLOCATION(PDOPgSqlStatement);
 
-        PDOPgSqlStatement(PDOPgSqlResource* conn, PQ::Connection* server);
+        PDOPgSqlStatement(req::ptr<PDOPgSqlResource> conn, PQ::Connection* server);
         virtual ~PDOPgSqlStatement();
 
         bool create(const String& sql, const Array &options);
@@ -64,16 +64,15 @@ namespace HPHP {
 
         long m_current_row;
 
-        std::string strprintf(const char* format, ...){
-            va_list args;
-            va_start (args, format);
-            int size = vsnprintf(nullptr, 0, format, args);
-            auto buffer = std::unique_ptr<char[]>(new char[size+1]);
-            if(vsnprintf((char*)buffer.get(), size+1, format, args) != size){
+        template <typename... T>
+        std::string strprintf(const char* format, T... args){
+            int size = snprintf(nullptr, 0, format, args...);
+            std::string str(size, '\0');
+            int actual_sz = snprintf(const_cast<char *>(str.c_str()), size + 1, format, args...);
+            if (actual_sz != size) {
                 throw std::exception();
             }
-            va_end (args);
-            return std::string((char*)buffer.get());
+            return str;
         }
 
         std::string oriToStr(PDOFetchOrientation ori, long offset, bool& success){

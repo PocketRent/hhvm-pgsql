@@ -1,7 +1,7 @@
 #ifndef incl_HPHP_PDO_PGSQL_CONNECTION_H_
 #define incl_HPHP_PDO_PGSQL_CONNECTION_H_
 
-#include "hphp/runtime/ext/pdo_driver.h"
+#include "hphp/runtime/ext/pdo/pdo_driver.h"
 #include "pq.h"
 
 #define PHP_PDO_PGSQL_CONNECTION_FAILURE_SQLSTATE "08006"
@@ -35,6 +35,8 @@ namespace HPHP {
         virtual int getAttribute(int64_t attr, Variant &value);
         virtual bool setAttribute(int64_t attr, const Variant &value);
         virtual bool fetchErr(PDOStatement* stmt, Array &info);
+
+        virtual bool fetchErr(PDOStatement *stmt, Array &info);
 
         String pgsqlLOBCreate();
 

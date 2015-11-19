@@ -243,12 +243,12 @@ namespace HPHP {
 
     const char* PDOPgSqlConnection::sqlstate(PQ::Result& result){
         const char* sqlstate = result.errorField(PG_DIAG_SQLSTATE);
-        
+
         // Handle case where libpq doesn't return an SQLSTATE (eg. server connection lost)
         if(sqlstate == nullptr){
             sqlstate = "XX000";
         }
-        
+
         return sqlstate;
     }
 
@@ -369,6 +369,22 @@ namespace HPHP {
         return 1;
     }
 
+    bool PDOPgSqlConnection::fetchErr(PDOStatement *stmt, Array &info) {
+        if (stmt == nullptr) {
+            info.append(m_lastExec == InvalidOid ? Variant(Variant::NullInit()) : Variant(m_lastExec));
+            info.append(err_msg.empty() ? Variant(Variant::NullInit()) : Variant(err_msg));
+            return true;
+        } else {
+            auto *s = static_cast<PDOPgSqlStatement *>(stmt);
+            auto status = s->m_result.status();
+            auto emsg = s->err_msg;
+
+            info.append(status == InvalidOid ? Variant(Variant::NullInit()) : Variant(status));
+            info.append(emsg.empty() ? Variant(Variant::NullInit()) : Variant(emsg));
+            return true;
+        }
+    }
+
     bool PDOPgSqlConnection::setAttribute(int64_t attr, const Variant &value){
         switch(attr){
             case PDO_ATTR_EMULATE_PREPARES:
@@ -403,10 +419,10 @@ namespace HPHP {
     }
 
     bool PDOPgSqlConnection::preparer(const String& sql, sp_PDOStatement *stmt, const Variant& options) {
-        auto rsrc = newres<PDOPgSqlResource>(
+        auto rsrc = req::make<PDOPgSqlResource>(
             std::dynamic_pointer_cast<PDOPgSqlConnection>(shared_from_this()));
 
-        auto s = newres<PDOPgSqlStatement>(rsrc, m_server);
+        auto s = req::make<PDOPgSqlStatement>(rsrc, m_server);
 
         *stmt = s;
 
