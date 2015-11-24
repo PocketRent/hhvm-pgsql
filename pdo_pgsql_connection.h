@@ -36,8 +36,6 @@ namespace HPHP {
         virtual bool setAttribute(int64_t attr, const Variant &value);
         virtual bool fetchErr(PDOStatement* stmt, Array &info);
 
-        virtual bool fetchErr(PDOStatement *stmt, Array &info);
-
         String pgsqlLOBCreate();
 
         bool preparer(const String& sql, sp_PDOStatement *stmt, const Variant& options) override;
