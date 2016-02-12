@@ -1,6 +1,7 @@
 # PostgreSQL for HHVM releases
 
-These releases add support for PostgreSQL to HHVM. See the README of the main branch for details on what is and isn't supported.
+These releases add support for PostgreSQL to HHVM. See the README of the main
+branch for details on what is and isn't supported.
 
 ## Installation
 
@@ -11,10 +12,16 @@ extension_dir = /etc/hhvm
 hhvm.extensions[pgsql] = pgsql.so
 ~~~
 
-You can check that everything is working by running `hhvm --php -r 'var_dump(function_exists("pg_connect"));'`.
-If everything is working fine, this will output `bool(true)`.
+You can check that everything is working by running `hhvm --php -r
+'var_dump(function_exists("pg_connect"));'`. If everything is working fine, this
+will output `bool(true)`.
 
 You may also need to restart HHVM to have the server pick up the extension.
+
+## HHVM 3.12.0
+
+* Debian [8 (jessie)](https://github.com/PocketRent/hhvm-pgsql/raw/releases/3.12.0/debian/jessie/pgsql.so)
+* Ubuntu [14.04 (trusty)](https://github.com/PocketRent/hhvm-pgsql/raw/releases/3.12.0/ubuntu/trusty/pgsql.so) / [15.04 (vivid)](https://github.com/PocketRent/hhvm-pgsql/raw/releases/3.12.0/ubuntu/vivid/pgsql.so) / [15.10 (wily)](https://github.com/PocketRent/hhvm-pgsql/raw/releases/3.12.0/ubuntu/wily/pgsql.so)
 
 ## HHVM 3.11.0
 
