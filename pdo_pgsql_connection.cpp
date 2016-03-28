@@ -285,7 +285,7 @@ namespace HPHP {
             if(this->pgoid == InvalidOid){
                 return empty_string();
             }
-            return String((long)this->pgoid);
+            return std::to_string(long(this->pgoid));
         } else {
             const char *values[1];
             values[0] = name;
