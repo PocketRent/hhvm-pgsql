@@ -18,6 +18,10 @@ will output `bool(true)`.
 
 You may also need to restart HHVM to have the server pick up the extension.
 
+## HHVM 3.15.0
+
+The postgres extension is now included in HHVM.
+
 ## HHVM 3.14.0
 
 * Debian [8 (jessie)](https://github.com/PocketRent/hhvm-pgsql/raw/releases/3.14.0/debian/jessie/pgsql.so)
