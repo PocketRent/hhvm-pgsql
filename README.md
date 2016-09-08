@@ -1,59 +1,6 @@
-## Postgres Extension for HipHop
+# Extension has moved
 
-This is an implementation of the `pgsql` and `pdo_pgsql` PHP extensions for
-[HHVM][fb-hphp].
-
-### Prerequisites
-
-To run, this extension only requires the HipHop VM itself and the `libpq`
-library distributed with Postgres. Building it requires the HHVM header files,
-the HHVM CMake files and the `libpq` header files. These can usually be
-installed with the `hhvm-dev` and `libpq-dev` packages.
-
-### Pre-built versions
-
-Pre-built versions of this extension are available in the
-[releases][pr-releases] branch.
-
-### Building & Installation
-
-Building requires the `hhvm-dev` and `libpq-dev` packages to be installed. Once
-they have been installed, the following commands will build the extensions.
-
-~~~
-$ cd /path/to/extension
-$ hphpize
-$ cmake .
-$ make
-~~~
-
-This will produce a `pgsql.so` file, the dynamically-loadable extension.
-Copy this file to `/etc/hhvm/pgsql.so`.
-
-To enable the extension, you need to have the following section in your hhvm
-config file:
-
-~~~
-extension_dir = /etc/hhvm
-hhvm.extensions[pgsql] = pgsql.so
-~~~
-
-This will cause the extension to be loaded when the virtual machine starts up.
-
-### Hack Friendly Mode
-
-If you are using Hack, then you can use the provided `pgsql.hhi` file to type
-the functions. There is also a compile-time option that can be passed to cmake
-that makes some minor adjustments to the API to make the Hack type checker more
-useful with them. This mostly consists of altering functions that would normally
-return `FALSE` on error and making them return `null` instead. This takes
-advantage of the nullable types in Hack.
-
-To enable Hack-friendly mode use this command instead of the `cmake` one above:
-
-~~~
-$ cmake -DHACK_FRIENDLY=ON .
-~~~
+As of the 3.15.0 release, this extension is now included in [HHVM core][fb-hphp].
 
 ### Differences from Zend
 
