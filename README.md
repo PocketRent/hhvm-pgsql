@@ -26,8 +26,6 @@ There are a few differences from the standard Zend implementation.
   * `pg_meta_data`
   * `pg_put_line`
   * `pg_select`
-  * `pg_set_client_encoding`
-  * `pg_set_error_verbosity`
   * `pg_trace`
   * `pg_tty`
   * `pg_untrace`
