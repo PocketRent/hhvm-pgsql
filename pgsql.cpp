@@ -1313,6 +1313,10 @@ static Variant HHVM_FUNCTION(pg_fetch_all_columns, const Resource& result, int64
 
     int num_rows = res->getNumRows();
 
+    if (num_rows == 0) {
+        FAIL_RETURN;
+    }
+
     Array arr;
     for (int i = 0; i < num_rows; i++) {
         Variant field = res->getFieldVal(i, column);
