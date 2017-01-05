@@ -97,7 +97,8 @@ static int php_pdo_parse_data_source(const char *data_source,
 
 namespace HPHP {
 
-    PDOPgSqlConnection::PDOPgSqlConnection() : m_server(nullptr), pgoid(InvalidOid) {
+    PDOPgSqlConnection::PDOPgSqlConnection() : m_server(nullptr), pgoid(InvalidOid),
+          m_emulate_prepare(false), m_disable_prepare(false) {
     }
 
     PDOPgSqlConnection::~PDOPgSqlConnection(){
@@ -368,29 +369,32 @@ namespace HPHP {
         return 1;
     }
 
-    bool PDOPgSqlConnection::fetchErr(PDOStatement *stmt, Array &info) {
-        if (stmt == nullptr) {
-            info.append(m_lastExec == InvalidOid ? Variant(Variant::NullInit()) : Variant(m_lastExec));
-            info.append(err_msg.empty() ? Variant(Variant::NullInit()) : Variant(err_msg));
-            return true;
-        } else {
-            auto *s = static_cast<PDOPgSqlStatement *>(stmt);
-            auto status = s->m_result.status();
-            auto emsg = s->err_msg;
-
-            info.append(status == InvalidOid ? Variant(Variant::NullInit()) : Variant(status));
-            info.append(emsg.empty() ? Variant(Variant::NullInit()) : Variant(emsg));
-            return true;
-        }
-    }
-
     bool PDOPgSqlConnection::setAttribute(int64_t attr, const Variant &value){
         switch(attr){
             case PDO_ATTR_EMULATE_PREPARES:
                 m_emulate_prepare = value.toBoolean();
                 return true;
+            case PDO_PGSQL_ATTR_DISABLE_PREPARES:
+                m_disable_prepare = value.toBoolean();
+                return true;
             default:
                 return false;
+        }
+    }
+
+ 
+    bool PDOPgSqlConnection::fetchErr(PDOStatement* stmt, Array &info){
+        if(stmt == nullptr){
+            info.append(m_lastExec == InvalidOid ? Variant(Variant::NullInit()) : Variant(m_lastExec));
+            info.append(err_msg.empty() ? Variant(Variant::NullInit()) : Variant(err_msg));
+            return true;
+        } else {
+            PDOPgSqlStatement* s = static_cast<PDOPgSqlStatement*>(stmt);
+            auto status = s->m_result.status();
+            auto emsg = s->err_msg;
+            info.append(status == InvalidOid ? Variant(Variant::NullInit()) : Variant(status));
+            info.append(emsg.empty() ? Variant(Variant::NullInit()) : Variant(emsg));
+            return true;
         }
     }
 
@@ -406,6 +410,7 @@ namespace HPHP {
 
         *stmt = s;
 
+        s->setDisablePrepares(m_disable_prepare);
         if(s->create(sql, options.toArray())){
             alloc_own_columns = 1;
             return true;

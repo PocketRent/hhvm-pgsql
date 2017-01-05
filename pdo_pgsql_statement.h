@@ -25,6 +25,7 @@ namespace HPHP {
         virtual ~PDOPgSqlStatement();
 
         bool create(const String& sql, const Array &options);
+        void setDisablePrepares(bool disable);
 
         virtual bool executer();
         virtual bool fetcher(PDOFetchOrientation ori, long offset);
@@ -50,6 +51,7 @@ namespace HPHP {
         std::string m_cursorName;
         std::string err_msg;
         PQ::Result m_result;
+        bool m_disablePrepares;
         bool m_isPrepared;
         bool m_hasParams;
 

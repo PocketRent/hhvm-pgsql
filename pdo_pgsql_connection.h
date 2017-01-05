@@ -34,8 +34,7 @@ namespace HPHP {
 
         virtual int getAttribute(int64_t attr, Variant &value);
         virtual bool setAttribute(int64_t attr, const Variant &value);
-
-        virtual bool fetchErr(PDOStatement *stmt, Array &info);
+        virtual bool fetchErr(PDOStatement* stmt, Array &info);
 
         String pgsqlLOBCreate();
 
@@ -47,6 +46,7 @@ namespace HPHP {
         ExecStatusType m_lastExec;
         std::string err_msg;
         bool m_emulate_prepare;
+        bool m_disable_prepare;
         const char* sqlstate(PQ::Result& result);
         void handleError(PDOPgSqlStatement* stmt, const char* sqlState, const char* msg);
         bool transactionCommand(const char* command);

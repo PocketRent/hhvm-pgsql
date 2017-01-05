@@ -2,6 +2,7 @@
 #define incl_HPHP_PDO_PGSQL_H_
 
 #include "hphp/runtime/base/type-string.h"
+#include "hphp/runtime/base/array-iterator.h"
 #include "hphp/runtime/base/array-data-defs.h"
 #include "hphp/runtime/ext/pdo/pdo_driver.h"
 
